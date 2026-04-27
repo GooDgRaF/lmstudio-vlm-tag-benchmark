@@ -180,3 +180,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 /ImgToTag
+
+# Local VLM benchmark runtime artifacts
+/results/*
+!/results/.gitkeep
