@@ -70,7 +70,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added image discovery with case-insensitive extension filtering, recursive/non-recursive traversal, stable sorting, deterministic Windows-safe `image_id`, and `--limit` support in `dry-run`.
+- Changed files: `src/image_loader.py`, `main.py`, `tests/test_image_loader.py`, `tests/helpers.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py dry-run --config config.example.yaml --limit 1`.
+- Notes: Limit is applied after stable sort as required.

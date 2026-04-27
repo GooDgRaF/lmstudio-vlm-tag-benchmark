@@ -24,6 +24,7 @@ For each spec:
 - Prefer simple Python modules over large frameworks.
 - Avoid speculative features.
 - Do not add GUI, SQLite, web server, async runner, Ollama support, plugin system, or heavy frontend tooling in v1.
+- For smoke checks, run only the smallest configured model (minimum `params`) with one image to keep checks fast and stable.
 - If something is ambiguous, choose the simplest working option and mention it in `Agent report`.
 - If automated testing is not practical for a stage, add a short manual check instead.
 

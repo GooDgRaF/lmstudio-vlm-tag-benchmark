@@ -86,7 +86,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented incremental `summary.csv` writing with header initialization, JSON-string serialization for list-like fields, UTF-8 BOM for Excel compatibility, and deduplication guard for resumed requests.
+- Changed files: `src/storage.py`, `src/runner.py`, `tests/test_summary_csv.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Smoke-test requests are stored in model metadata and excluded from normal request rows.

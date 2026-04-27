@@ -190,6 +190,13 @@ python main.py run --config config.example.yaml --limit 1
 python main.py report --run results/<run_id>
 ```
 
+Для smoke-проверки используйте только самую маленькую модель:
+
+```bash
+python main.py run --config config.smoke.yaml --limit 1
+python main.py report --run results/<run_id>
+```
+
 ## Выходные данные
 
 Каждый запуск создает отдельную папку:

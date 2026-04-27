@@ -74,7 +74,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented run storage with deterministic `run_id`/`request_id`, Windows-safe file naming, run folder structure, config/model metadata saving, raw/normalized result writes, error log append, and summary CSV bootstrap.
+- Changed files: `src/storage.py`, `tests/test_storage.py`, `tests/test_summary_csv.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: `request_id` depends on `model_label`, `image_id`, `mode`, `prompt_version`, and `response_format_requested`.

@@ -98,7 +98,7 @@ Tests should use mocked LM Studio calls and cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented sequential benchmark loop with model load/unload, smoke test, per-request inference flow, fallback retry without `response_format`, raw+normalized persistence, per-model diagnostics metadata, and incremental `summary.csv` rows.
+- Changed files: `src/runner.py`, `main.py`, `tests/test_runner.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py dry-run --config config.example.yaml --limit 1`.
+- Notes: Run remains strictly sequential (no async/parallel processing).

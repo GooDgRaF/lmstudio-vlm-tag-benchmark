@@ -63,7 +63,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented plain and explained-ID pool loaders, validation (duplicate IDs, empty tags), prompt-ready explained text generation, and ID-to-tag mapping helpers.
+- Changed files: `src/tag_pools.py`, `tests/test_tag_pools.py`, `tests/helpers.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Prompt-ready explained text is generated in memory at runtime; no generated files are stored under `pools/`.

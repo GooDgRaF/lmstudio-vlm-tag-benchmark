@@ -82,7 +82,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented prompts for all six modes, `prompt_version`, response-format selection, strict JSON parsing with optional extraction, line fallback, ID parsing for explained modes, pool validation, duplicate removal, and normalized output schema.
+- Changed files: `src/prompts.py`, `src/validator.py`, `tests/test_prompts.py`, `tests/test_response_parsing.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Explained-pool modes intentionally reject tag text responses and keep them in rejected fields for diagnostics.

@@ -64,7 +64,7 @@ Tests should check:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Created project skeleton with `main.py`, package layout, config loading, and `validate-config` CLI command.
+- Changed files: `main.py`, `src/__init__.py`, `src/config.py`, `tests/test_cli.py`, `tests/helpers.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py validate-config --config config.example.yaml`.
+- Notes: Config loading fails early with clear `ConfigError` for missing file or invalid section shape.

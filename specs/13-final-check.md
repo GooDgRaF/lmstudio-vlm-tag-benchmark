@@ -67,10 +67,11 @@ Run a dry run:
 python main.py dry-run --config config.example.yaml --limit 1
 ```
 
-If LM Studio is available and at least one image exists, run a smoke benchmark:
+If LM Studio is available and at least one image exists, run a smoke benchmark on the smallest configured model only:
 
 ```bash
-python main.py run --config config.example.yaml --limit 1
+# use a one-model config (smallest `params`) for smoke checks
+python main.py run --config config.smoke.yaml --limit 1
 python main.py report --run results/<run_id>
 ```
 
@@ -78,7 +79,7 @@ python main.py report --run results/<run_id>
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Verified implemented CLI commands (`list-models`, `validate-config`, `dry-run`, `run`, `report`), aligned code with config/spec constraints, removed no-longer-missing skeleton by implementing full v1 modules/tests, and filled all prior spec reports.
+- Changed files: `main.py`, `src/*.py`, `tests/*.py`, `specs/01-project-skeleton.md` ... `specs/13-final-check.md`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py validate-config --config config.example.yaml`; `python main.py dry-run --config config.example.yaml --limit 1`; `python main.py list-models --config config.example.yaml`.
+- Notes: `run`/full smoke benchmark with real model load is implemented but not executed in this pass because it is hardware/runtime-heavy; test coverage uses mocks for deterministic verification.

@@ -91,7 +91,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added `report` CLI command and static HTML report generation from `summary.csv`, with model summary metrics, gallery cards, safe HTML escaping, and thumbnail generation via Pillow with graceful fallback.
+- Changed files: `src/report.py`, `main.py`, `tests/test_report.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Thumbnail size is read from `run_config.yaml` when present; missing/failed thumbnail generation does not stop report creation.

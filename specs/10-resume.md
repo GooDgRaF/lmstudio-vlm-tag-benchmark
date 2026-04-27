@@ -62,7 +62,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added file-based resume decision logic for skipping successful existing normalized results and retrying or skipping existing error results based on config flags.
+- Changed files: `src/runner.py`, `tests/test_resume.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Success criteria account for pool modes requiring `pool_ok == true`.

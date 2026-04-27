@@ -62,7 +62,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Implemented config parsing + practical validation for required sections, model fields, mode names, pool files, unique labels, and context-length limits.
+- Changed files: `src/config.py`, `src/validator.py`, `tests/test_config.py`, `tests/test_validator.py`, `tests/helpers.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py validate-config --config config.example.yaml`.
+- Notes: Some missing sections fail already in loader (`ConfigError`) before semantic validator stage, which keeps error messages clear and early.

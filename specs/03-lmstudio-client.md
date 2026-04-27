@@ -70,7 +70,7 @@ Tests should mock HTTP calls and cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added LM Studio client (`list_models`, `load_model`, `unload_model`, `chat_completion`), `LoadedModel`, connection/HTTP error handling, response-format unsupported diagnostic, and `list-models` CLI probe.
+- Changed files: `src/lmstudio_client.py`, `main.py`, `tests/test_lmstudio_client.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py list-models --config config.example.yaml`.
+- Notes: Observed LM Studio `/api/v1/models` payload shape is `{ "models": [...] }` in this environment (not only `{ "data": [...] }`), parser updated to support both.

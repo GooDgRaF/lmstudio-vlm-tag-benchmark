@@ -69,7 +69,7 @@ Tests should cover:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added optional GPU diagnostics via `nvidia-smi`, tolerant parser for CSV-style output, load-error classification (`load_failed`, `load_failed_oom`), token/finish_reason extraction, and context warning/error flags.
+- Changed files: `src/diagnostics.py`, `tests/test_diagnostics.py`.
+- Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`.
+- Notes: Diagnostics are best-effort and return `gpu_diagnostics_available: false` when unavailable without breaking run flow.
