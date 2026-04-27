@@ -56,14 +56,14 @@ def build_prompt(cfg: BenchmarkConfig, mode: str, pools: TagPools) -> PromptBuil
             prompt = (
                 f"{rules}\n"
                 "Выбери только подходящие ID из списка ниже.\n"
-                "Формат ответа: один ID на строку.\n\n"
+                "Формат ответа: один ID на строку, без квадратных скобок и без пояснений.\n\n"
                 f"{pool_text}"
             )
         else:
             prompt = (
                 f"{rules}\n"
                 "Choose only matching IDs from the list below.\n"
-                "Answer format: one ID per line.\n\n"
+                "Answer format: one ID per line, without square brackets and without explanations.\n\n"
                 f"{pool_text}"
             )
     elif mode.endswith("_pool"):
@@ -122,4 +122,3 @@ def strict_json_response_format(max_tags: int) -> dict:
             },
         },
     }
-

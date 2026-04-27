@@ -38,7 +38,7 @@ Expected files:
 - TSV parser format: `id<TAB>tag<TAB>explanation`.
 - Validate that IDs are unique.
 - Validate that tags are non-empty.
-- Generate prompt-ready explained pool text at runtime in the form `[ID] tag — explanation`.
+- Generate prompt-ready explained pool text at runtime in the form `ID<TAB>tag - explanation` so the model sees bare IDs and is less likely to return bracketed values.
 - Provide helpers for mapping accepted IDs back to canonical tag names.
 - Do not store generated prompt files in `pools/`.
 

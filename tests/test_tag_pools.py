@@ -35,5 +35,5 @@ def test_prompt_text_contains_id_tag_explanation(tmp_path):
     cfg = load_config(build_config(tmp_path))
     pools = load_tag_pools(cfg)
     text = pools.explained_prompt_text("en")
-    assert "[EN001] General - Safe" in text
-
+    assert "EN001\tGeneral - Safe" in text
+    assert "[EN001]" not in text

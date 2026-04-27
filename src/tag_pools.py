@@ -50,7 +50,7 @@ class TagPools:
 
     def explained_prompt_text(self, language: str) -> str:
         entries = self.ru_explained if language == "ru" else self.en_explained
-        return "\n".join(f"[{entry.id}] {entry.tag} - {entry.explanation}" for entry in entries)
+        return "\n".join(f"{entry.id}\t{entry.tag} - {entry.explanation}" for entry in entries)
 
     def ids_to_tags(self, language: str, ids: list[str]) -> list[str]:
         mapping = self.ru_explained_id_to_tag if language == "ru" else self.en_explained_id_to_tag
@@ -104,4 +104,3 @@ def load_tag_pools(cfg: BenchmarkConfig) -> TagPools:
         ru_explained=ru_explained,
         en_explained=en_explained,
     )
-

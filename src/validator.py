@@ -136,6 +136,13 @@ def _parse_line_values(raw_output: str) -> list[str]:
     return [line.strip() for line in raw_output.splitlines() if line.strip()]
 
 
+def _parse_line_ids(raw_output: str) -> list[str]:
+    ids = re.findall(r"\b(?:RU|EN)\d+\b", raw_output)
+    if ids:
+        return ids
+    return _parse_line_values(raw_output)
+
+
 def _parse_response_values(
     raw_output: str,
     expected_format: str,
@@ -144,7 +151,7 @@ def _parse_response_values(
     mode: str,
 ) -> ParsedValues:
     if expected_format == "line_ids":
-        ids = _unique_preserving_order(_parse_line_values(raw_output))
+        ids = _unique_preserving_order(_parse_line_ids(raw_output))
         return ParsedValues(
             tags=[],
             ids=ids,
@@ -348,4 +355,3 @@ def normalize_model_output(
         "error": error,
     }
     return normalized
-

@@ -86,6 +86,29 @@ def test_unknown_explained_ids_rejected(tmp_path):
     assert out["rejected_ids"] == ["EN999"]
 
 
+def test_bracketed_explained_ids_are_mapped_to_tags(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output="[EN001]\n[EN002]",
+        mode="en_pool_explained",
+        requested_response_format="line_ids",
+    )
+    assert out["accepted_ids"] == ["EN001", "EN002"]
+    assert out["accepted_tags"] == ["General", "Anime"]
+    assert out["rejected_ids"] == []
+
+
+def test_comma_separated_explained_ids_are_mapped_to_tags(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output="[EN001], [EN002]",
+        mode="en_pool_explained",
+        requested_response_format="line_ids",
+    )
+    assert out["accepted_ids"] == ["EN001", "EN002"]
+    assert out["accepted_tags"] == ["General", "Anime"]
+
+
 def test_explained_mode_tag_text_rejected(tmp_path):
     out = _normalize(
         tmp_path,
@@ -106,4 +129,3 @@ def test_tag_count_capped_at_10(tmp_path):
         requested_response_format="strict_json",
     )
     assert len(out["accepted_tags"]) == 10
-

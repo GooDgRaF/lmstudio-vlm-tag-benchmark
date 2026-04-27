@@ -43,6 +43,7 @@ Expected files:
 - For free and plain-pool modes, support one-tag-per-line fallback.
 - For explained-pool modes, support one-ID-per-line response format.
 - In explained-pool modes, accept only IDs as model output.
+- Show explained-pool IDs as bare codes in prompts and instruct the model to return IDs without square brackets or explanations.
 - If an explained-pool response returns tag text instead of IDs, record it as rejected output instead of silently mapping it.
 - For strict JSON, accept `{"tags": ["tag1", "tag2"]}`.
 - Implement optional extraction of the first JSON object from a messy answer when configured.

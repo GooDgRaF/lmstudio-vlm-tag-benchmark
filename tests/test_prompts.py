@@ -34,6 +34,13 @@ def test_explained_prompt_contains_ids_and_explanations(tmp_path):
     cfg = load_config(build_config(tmp_path))
     pools = load_tag_pools(cfg)
     prompt = build_prompt(cfg, "ru_pool_explained", pools)
-    assert "[RU001]" in prompt.prompt
+    assert "RU001" in prompt.prompt
+    assert "[RU001]" not in prompt.prompt
     assert "Безопасно" in prompt.prompt
 
+
+def test_explained_prompt_asks_for_ids_without_brackets(tmp_path):
+    cfg = load_config(build_config(tmp_path))
+    pools = load_tag_pools(cfg)
+    prompt = build_prompt(cfg, "en_pool_explained", pools)
+    assert "without square brackets" in prompt.prompt
