@@ -81,6 +81,13 @@ POST /api/v1/models/load
 POST /api/v1/models/unload
 ```
 
+Для выгрузки модельного экземпляра `POST /api/v1/models/unload` ожидает строго тело
+`{"instance_id": "<loaded instance id>"}`. Не добавлять соседний ключ `id`: текущий
+LM Studio отвергает лишние ключи ошибкой `unrecognized_keys`. Значение
+`instance_id` нужно брать из ответа `load` или из элементов `loaded_instances`
+в `GET /api/v1/models`; оно может иметь вид `qwen/qwen3-vl-4b` или
+`qwen/qwen3-vl-4b:2` и не обязано совпадать с variant-id из конфига.
+
 OpenAI-compatible API используется для запросов к модели:
 
 ```text

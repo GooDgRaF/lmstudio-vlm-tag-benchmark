@@ -147,13 +147,17 @@ class LMStudioClient:
         )
 
     def unload_model(self, instance_id: str, model_id_fallback: str | None = None) -> dict[str, Any]:
-        body = {"id": instance_id, "instance_id": instance_id}
+        body = {"instance_id": instance_id}
         try:
             return self._request("POST", f"{self.api_base_url}/models/unload", json=body)
         except LMStudioClientError as exc:
             message = str(exc).lower()
             # Current LM Studio expects instance_id; do not fallback if it is required.
-            if "missing required field 'instance_id'" in message or "missing_required_parameter" in message:
+            if (
+                "missing required field 'instance_id'" in message
+                or "missing_required_parameter" in message
+                or "unrecognized key" in message
+            ):
                 raise
             if not model_id_fallback:
                 raise

@@ -34,7 +34,9 @@ Expected files:
   - `load_model(model_id, load_config)` using `POST /api/v1/models/load`;
   - `unload_model(instance_id)` using `POST /api/v1/models/unload`;
   - `chat_completion(...)` using `POST /v1/chat/completions`.
-- Prefer `instance_id` for unloading loaded models. Use `model_id` only as a fallback if the observed LM Studio API requires it.
+- Unload loaded models with `POST /api/v1/models/unload` and the exact JSON body `{"instance_id": "<loaded instance id>"}`.
+- Do not include an `id` key in the unload body; current LM Studio rejects extra keys with `unrecognized_keys`.
+- Use the returned load `instance_id`, or values from `loaded_instances`, rather than the configured variant `model_id`.
 - Preserve raw response objects enough for diagnostics.
 - Add a `LoadedModel` data structure with fields from the architecture.
 - Add timeouts from config.
@@ -61,7 +63,7 @@ Tests should mock HTTP calls and cover:
 
 - model listing;
 - load request body includes configured context length;
-- unload request is sent with `instance_id`;
+- unload request is sent with `instance_id` and no extra `id` key;
 - chat completion sends to the OpenAI-compatible endpoint;
 - unsupported `response_format` errors are surfaced clearly;
 - connection errors become readable application errors.
@@ -74,3 +76,4 @@ Fill this after implementation:
 - Changed files: `src/lmstudio_client.py`, `main.py`, `tests/test_lmstudio_client.py`.
 - Checks run: `python -m pytest -q --basetemp C:\Users\anton\AppData\Local\Temp\codex_pytest`; `python main.py list-models --config config.example.yaml`.
 - Notes: Observed LM Studio `/api/v1/models` payload shape is `{ "models": [...] }` in this environment (not only `{ "data": [...] }`), parser updated to support both.
+- Notes: Observed LM Studio `/api/v1/models/unload` requires exactly `{"instance_id": ...}`. Sending both `id` and `instance_id` is rejected as `unrecognized_keys`; falling back to `model`/`identifier` then produces the misleading `Missing required field 'instance_id'` error.

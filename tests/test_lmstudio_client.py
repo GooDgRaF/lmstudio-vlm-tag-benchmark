@@ -106,7 +106,27 @@ def test_unload_uses_instance_id(tmp_path, monkeypatch):
 
     monkeypatch.setattr(client.session, "request", fake_request)
     client.unload_model("abc")
+    assert "id" not in seen["json"]
     assert seen["json"]["instance_id"] == "abc"
+
+
+def test_unload_does_not_fallback_on_unrecognized_instance_payload(tmp_path, monkeypatch):
+    cfg = load_config(build_config(tmp_path))
+    client = LMStudioClient.from_config(cfg)
+    calls = []
+
+    def fake_request(method, url, timeout=None, **kwargs):
+        calls.append(kwargs.get("json"))
+        return FakeResponse(
+            400,
+            payload=None,
+            text='{"error":{"message":"Unrecognized key(s) in object: \'id\'","code":"unrecognized_keys"}}',
+        )
+
+    monkeypatch.setattr(client.session, "request", fake_request)
+    with pytest.raises(LMStudioClientError, match="Unrecognized key"):
+        client.unload_model("abc", "m1@q4")
+    assert calls == [{"instance_id": "abc"}]
 
 
 def test_chat_completion_response_format_unsupported(tmp_path, monkeypatch):
