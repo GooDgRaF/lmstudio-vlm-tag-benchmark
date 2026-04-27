@@ -184,3 +184,4 @@ cython_debug/
 # Local VLM benchmark runtime artifacts
 /results/*
 !/results/.gitkeep
+/.tmp
