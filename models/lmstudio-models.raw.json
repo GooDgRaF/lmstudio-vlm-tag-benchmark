@@ -1,0 +1,214 @@
+[
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3-vl-8b",
+    "format": "gguf",
+    "displayName": "Qwen3 VL 8B",
+    "publisher": "qwen",
+    "path": "qwen/qwen3-vl-8b",
+    "sizeBytes": 6186994398,
+    "indexedModelIdentifier": "qwen/qwen3-vl-8b",
+    "deviceIdentifier": null,
+    "paramsString": "8B",
+    "architecture": "qwen3vl",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "qwen/qwen3-vl-8b@q4_k_m"
+    ],
+    "selectedVariant": "qwen/qwen3-vl-8b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3-vl-4b",
+    "format": "gguf",
+    "displayName": "Qwen3 VL 4B",
+    "publisher": "qwen",
+    "path": "qwen/qwen3-vl-4b",
+    "sizeBytes": 3333641502,
+    "indexedModelIdentifier": "qwen/qwen3-vl-4b",
+    "deviceIdentifier": null,
+    "paramsString": "4B",
+    "architecture": "qwen3vl",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "qwen/qwen3-vl-4b@q4_k_m",
+      "qwen/qwen3-vl-4b@q8_0"
+    ],
+    "selectedVariant": "qwen/qwen3-vl-4b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "nvidia/nemotron-3-nano-4b",
+    "format": "gguf",
+    "displayName": "Nemotron 3 Nano 4B",
+    "publisher": "nvidia",
+    "path": "nvidia/nemotron-3-nano-4b",
+    "sizeBytes": 2837173509,
+    "indexedModelIdentifier": "nvidia/nemotron-3-nano-4b",
+    "deviceIdentifier": null,
+    "paramsString": "4.0B",
+    "architecture": "nemotron_h",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "nvidia/nemotron-3-nano-4b@q4_k_m"
+    ],
+    "selectedVariant": "nvidia/nemotron-3-nano-4b@q4_k_m",
+    "vision": false,
+    "trainedForToolUse": true,
+    "maxContextLength": 1048576
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.6-35b-a3b",
+    "format": "gguf",
+    "displayName": "Qwen3.6 35B A3B",
+    "publisher": "qwen",
+    "path": "qwen/qwen3.6-35b-a3b",
+    "sizeBytes": 22069768080,
+    "indexedModelIdentifier": "qwen/qwen3.6-35b-a3b",
+    "deviceIdentifier": null,
+    "paramsString": "35B-A3B",
+    "architecture": "qwen35moe",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "qwen/qwen3.6-35b-a3b@q4_k_m"
+    ],
+    "selectedVariant": "qwen/qwen3.6-35b-a3b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.6-27b",
+    "format": "gguf",
+    "displayName": "Qwen3.6 27B",
+    "publisher": "qwen",
+    "path": "qwen/qwen3.6-27b",
+    "sizeBytes": 17478732949,
+    "indexedModelIdentifier": "qwen/qwen3.6-27b",
+    "deviceIdentifier": null,
+    "paramsString": "27B",
+    "architecture": "qwen35",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "qwen/qwen3.6-27b@q4_k_m"
+    ],
+    "selectedVariant": "qwen/qwen3.6-27b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.5-9b",
+    "format": "gguf",
+    "displayName": "Qwen3.5 9B",
+    "publisher": "qwen",
+    "path": "qwen/qwen3.5-9b",
+    "sizeBytes": 6548927017,
+    "indexedModelIdentifier": "qwen/qwen3.5-9b",
+    "deviceIdentifier": null,
+    "paramsString": "9B",
+    "architecture": "qwen35",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "qwen/qwen3.5-9b@q4_k_m",
+      "qwen/qwen3.5-9b@q6_k"
+    ],
+    "selectedVariant": "qwen/qwen3.5-9b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "google/gemma-4-e2b",
+    "format": "gguf",
+    "displayName": "Gemma 4 E2B",
+    "publisher": "google",
+    "path": "google/gemma-4-e2b",
+    "sizeBytes": 5954422928,
+    "indexedModelIdentifier": "google/gemma-4-e2b",
+    "deviceIdentifier": null,
+    "paramsString": "4.6B",
+    "architecture": "gemma4",
+    "quantization": {
+      "name": "Q8_0",
+      "bits": 8
+    },
+    "variants": [
+      "google/gemma-4-e2b@q8_0"
+    ],
+    "selectedVariant": "google/gemma-4-e2b@q8_0",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 131072
+  },
+  {
+    "type": "llm",
+    "modelKey": "google/gemma-4-e4b",
+    "format": "gguf",
+    "displayName": "Gemma 4 E4B",
+    "publisher": "google",
+    "path": "google/gemma-4-e4b",
+    "sizeBytes": 6326936720,
+    "indexedModelIdentifier": "google/gemma-4-e4b",
+    "deviceIdentifier": null,
+    "paramsString": "7.5B",
+    "architecture": "gemma4",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "variants": [
+      "google/gemma-4-e4b@q4_k_m",
+      "google/gemma-4-e4b@q6_k"
+    ],
+    "selectedVariant": "google/gemma-4-e4b@q4_k_m",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 131072
+  },
+  {
+    "type": "embedding",
+    "modelKey": "text-embedding-nomic-embed-text-v1.5",
+    "format": "gguf",
+    "displayName": "Nomic Embed Text v1.5",
+    "publisher": "nomic-ai",
+    "path": "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q4_K_M.gguf",
+    "sizeBytes": 84106624,
+    "indexedModelIdentifier": "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q4_K_M.gguf",
+    "deviceIdentifier": null,
+    "architecture": "nomic-bert",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "maxContextLength": 2048
+  }
+]
