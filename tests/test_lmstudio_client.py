@@ -138,3 +138,24 @@ def test_connection_error_readable(tmp_path, monkeypatch):
     monkeypatch.setattr(client.session, "request", fake_request)
     with pytest.raises(LMStudioClientError, match="Failed to connect"):
         client.list_models()
+
+
+def test_unload_all_loaded_models(tmp_path, monkeypatch):
+    cfg = load_config(build_config(tmp_path))
+    client = LMStudioClient.from_config(cfg)
+    calls = []
+
+    def fake_request(method, url, timeout=None, **kwargs):
+        if method == "GET":
+            return FakeResponse(
+                200,
+                {"models": [{"selected_variant": "m1@q4", "key": "m1", "loaded_instances": [{"id": "inst-a"}]}]},
+                text="ok",
+            )
+        calls.append(kwargs.get("json"))
+        return FakeResponse(200, {"ok": True}, text="ok")
+
+    monkeypatch.setattr(client.session, "request", fake_request)
+    unloaded = client.unload_all_loaded_models()
+    assert len(unloaded) == 1
+    assert calls[0]["instance_id"] == "inst-a"

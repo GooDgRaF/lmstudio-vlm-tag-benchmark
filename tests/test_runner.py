@@ -12,6 +12,7 @@ class FakeClient:
     def __init__(self, *args, **kwargs):
         self.loaded = []
         self.unloaded = []
+        self.unload_all_calls = 0
 
     @classmethod
     def from_config(cls, cfg):
@@ -19,6 +20,10 @@ class FakeClient:
 
     def list_models(self):
         return [{"id": "m1@q4"}]
+
+    def unload_all_loaded_models(self):
+        self.unload_all_calls += 1
+        return []
 
     def load_model(self, model, load_config):
         self.loaded.append(model.id)
@@ -72,6 +77,20 @@ def test_runner_attempts_all_modes_for_image(tmp_path, monkeypatch):
     rows = (run_dir / "summary.csv").read_text(encoding="utf-8-sig").splitlines()
     # header + 6 mode rows
     assert len(rows) == 7
+
+
+def test_runner_preload_unload_is_called(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = False
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+
+    fake = FakeClient()
+    monkeypatch.setattr("src.runner.LMStudioClient.from_config", lambda _: fake)
+    run_benchmark(cfg, limit=1)
+    assert fake.unload_all_calls >= 1
 
 
 def test_smoke_test_failure_skips_model(tmp_path, monkeypatch):

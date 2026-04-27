@@ -123,6 +123,13 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
         raise RuntimeError(f"LM Studio availability check failed: {exc}") from exc
 
     for model in cfg.models:
+        # Proactively clear any previously loaded instances so each request starts clean.
+        unloaded = client.unload_all_loaded_models()
+        if unloaded:
+            storage.append_error(
+                f"{model.label}: pre_load_unload: removed {len(unloaded)} loaded instance(s)"
+            )
+
         gpu_before = collect_gpu_memory(cfg)
         storage.save_model_metadata(model.label, "gpu_before_load.json", gpu_before)
         loaded = None
@@ -368,9 +375,12 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
 
         if cfg.runtime.unload_model_after_run:
             try:
-                client.unload_model(loaded.instance_id, model.id)
+                unloaded_after = client.unload_all_loaded_models()
+                if unloaded_after:
+                    storage.append_error(
+                        f"{model.label}: post_run_unload: removed {len(unloaded_after)} loaded instance(s)"
+                    )
             except LMStudioClientError as exc:
                 storage.append_error(f"{model.label}: unload_failed: {exc}")
 
     return storage.run_dir
-

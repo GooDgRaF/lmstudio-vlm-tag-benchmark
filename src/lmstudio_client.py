@@ -150,7 +150,11 @@ class LMStudioClient:
         body = {"id": instance_id, "instance_id": instance_id}
         try:
             return self._request("POST", f"{self.api_base_url}/models/unload", json=body)
-        except LMStudioClientError:
+        except LMStudioClientError as exc:
+            message = str(exc).lower()
+            # Current LM Studio expects instance_id; do not fallback if it is required.
+            if "missing required field 'instance_id'" in message or "missing_required_parameter" in message:
+                raise
             if not model_id_fallback:
                 raise
             return self._request(
@@ -158,6 +162,41 @@ class LMStudioClient:
                 f"{self.api_base_url}/models/unload",
                 json={"model": model_id_fallback, "identifier": model_id_fallback},
             )
+
+    def unload_all_loaded_models(self) -> list[dict[str, Any]]:
+        unloaded: list[dict[str, Any]] = []
+        models = self.list_models()
+        for model in models:
+            loaded_instances = model.get("loaded_instances")
+            if not isinstance(loaded_instances, list):
+                continue
+            for instance in loaded_instances:
+                if isinstance(instance, dict):
+                    instance_id = (
+                        instance.get("id")
+                        or instance.get("instance_id")
+                        or instance.get("identifier")
+                    )
+                else:
+                    instance_id = instance
+                if not instance_id:
+                    continue
+                try:
+                    response = self.unload_model(
+                        instance_id=str(instance_id),
+                        model_id_fallback=model.get("selected_variant") or model.get("key"),
+                    )
+                    unloaded.append(
+                        {
+                            "instance_id": str(instance_id),
+                            "model_hint": model.get("selected_variant") or model.get("key"),
+                            "response": response,
+                        }
+                    )
+                except LMStudioClientError:
+                    # Keep this best-effort: cleanup should not block full run.
+                    continue
+        return unloaded
 
     def chat_completion(
         self,
