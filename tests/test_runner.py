@@ -13,6 +13,7 @@ class FakeClient:
         self.loaded = []
         self.unloaded = []
         self.unload_all_calls = 0
+        self.chat_model_ids = []
 
     @classmethod
     def from_config(cls, cfg):
@@ -47,6 +48,7 @@ class FakeClient:
         return {"ok": True}
 
     def chat_completion(self, **kwargs):
+        self.chat_model_ids.append(kwargs.get("model_id"))
         return {
             "choices": [{"message": {"content": '{"tags":["cat"]}'}, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
@@ -67,6 +69,7 @@ def test_runner_vertical_slice_saves_raw_and_normalized(tmp_path, monkeypatch):
     normalized_files = list((run_dir / "normalized").glob("*.json"))
     assert len(raw_files) == 1
     assert len(normalized_files) == 1
+    assert (run_dir / "report.html").exists()
 
 
 def test_runner_attempts_all_modes_for_image(tmp_path, monkeypatch):
@@ -91,6 +94,20 @@ def test_runner_preload_unload_is_called(tmp_path, monkeypatch):
     monkeypatch.setattr("src.runner.LMStudioClient.from_config", lambda _: fake)
     run_benchmark(cfg, limit=1)
     assert fake.unload_all_calls >= 1
+
+
+def test_runner_uses_loaded_instance_for_chat_requests(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+
+    fake = FakeClient()
+    monkeypatch.setattr("src.runner.LMStudioClient.from_config", lambda _: fake)
+    run_benchmark(cfg, limit=1)
+    assert fake.chat_model_ids
+    assert set(fake.chat_model_ids) == {"inst1"}
 
 
 def test_smoke_test_failure_skips_model(tmp_path, monkeypatch):

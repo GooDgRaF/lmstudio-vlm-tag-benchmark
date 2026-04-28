@@ -58,7 +58,7 @@ limits:
   max_tags: 10
   timeout_sec: 180
   retries: 1
-  limit_images: null
+  limit_images: 1
 
 response_formats:
   free_modes:

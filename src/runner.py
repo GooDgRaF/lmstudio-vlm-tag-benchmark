@@ -15,6 +15,7 @@ from src.lmstudio_client import (
     ResponseFormatUnsupportedError,
 )
 from src.prompts import PROMPT_VERSION, build_prompt, strict_json_response_format
+from src.report import build_report
 from src.storage import build_request_id, create_run_storage
 from src.tag_pools import TagPools, load_tag_pools
 from src.validator import normalize_model_output
@@ -87,8 +88,7 @@ def _response_format_payload(name: str, max_tags: int) -> dict[str, Any] | None:
 
 def _run_smoke_test(
     client: LMStudioClient,
-    cfg: BenchmarkConfig,
-    model: ModelConfig,
+    runtime_model_id: str,
     image: DiscoveredImage | None,
 ) -> dict[str, Any]:
     if image is None:
@@ -97,7 +97,7 @@ def _run_smoke_test(
     messages = _build_messages(prompt, image.image_path)
     try:
         completion = client.chat_completion(
-            model_id=model.id,
+            model_id=runtime_model_id,
             messages=messages,
             temperature=0.0,
             top_p=1.0,
@@ -160,7 +160,7 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
         storage.save_model_metadata(model.label, "gpu_after_load.json", gpu_after)
 
         if cfg.runtime.image_request_smoke_test:
-            smoke = _run_smoke_test(client, cfg, model, images[0] if images else None)
+            smoke = _run_smoke_test(client, loaded.instance_id, images[0] if images else None)
             storage.save_model_metadata(model.label, "smoke_test.json", smoke)
             if not smoke.get("ok"):
                 if cfg.runtime.unload_model_after_run:
@@ -198,7 +198,7 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                 retried_without_response_format = False
                 try:
                     completion_payload = client.chat_completion(
-                        model_id=model.id,
+                        model_id=loaded.instance_id,
                         messages=_build_messages(prompt.prompt, image.image_path),
                         temperature=cfg.generation.temperature,
                         top_p=cfg.generation.top_p,
@@ -210,7 +210,7 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                         retried_without_response_format = True
                         response_format_used = "line_tags" if not mode.endswith("_pool_explained") else "line_ids"
                         completion_payload = client.chat_completion(
-                            model_id=model.id,
+                            model_id=loaded.instance_id,
                             messages=_build_messages(prompt.prompt, image.image_path),
                             temperature=cfg.generation.temperature,
                             top_p=cfg.generation.top_p,
@@ -382,5 +382,8 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                     )
             except LMStudioClientError as exc:
                 storage.append_error(f"{model.label}: unload_failed: {exc}")
+
+    if cfg.report.generate_html:
+        build_report(storage.run_dir)
 
     return storage.run_dir
