@@ -13,6 +13,8 @@ The benchmark should ask models for concise tags directly:
 
 Keep JSON parsing support in code. This spec changes the default active prompts/configs, not the parser's ability to handle JSON.
 
+Also make output extraction robust for reasoning models whose OpenAI-compatible response has an empty `message.content` but a useful `message.reasoning_content`. Do not disable model reasoning.
+
 Implement this spec before SPEC-18 so the new `PROMPT_VERSION` and request ids become the baseline for resumable artifacts.
 
 ## Files
@@ -27,6 +29,7 @@ Related files:
 Expected files:
 
 - `src/prompts.py`
+- `src/runner.py`
 - `src/validator.py`
 - `src/config.py`
 - `config.smoke.yaml`
@@ -45,6 +48,8 @@ Implement in this spec:
 - make free and plain-pool modes request `line_tags` by default;
 - keep explained-pool modes requesting `line_ids`;
 - keep strict JSON parsing support available in code;
+- parse `message.reasoning_content` as fallback when `message.content` is empty;
+- record output-source diagnostics for content vs reasoning-content extraction;
 - write explicit Russian/English prompts;
 - encode the 3+3+4 prioritization strategy in prompts;
 - keep pool-mode prompts strict about using only pool entries;
@@ -58,6 +63,7 @@ Do not implement in this spec:
 - new tagging modes;
 - pool semantic changes;
 - removal of JSON parser or JSON response_format code.
+- disabling reasoning for Qwen/Qwen-like reasoning models.
 
 ## Config Changes
 
@@ -177,6 +183,63 @@ Important behavior:
 
 Do not remove `strict_json_response_format`; it remains useful for future configs.
 
+## Reasoning Content Fallback
+
+Some reasoning models can return useful tag output in:
+
+```json
+message.reasoning_content
+```
+
+while leaving:
+
+```json
+message.content
+```
+
+empty. This has been observed with `qwen3_5-9b-q4_k_m` and `qwen3_5-9b-q6_k`: LM Studio reports `finish_reason: "stop"` and token usage, but `content` is empty and the JSON/tag output is inside `reasoning_content`.
+
+Update output extraction so that:
+
+- if `message.content` is non-empty after string conversion, use `message.content`;
+- if `message.content` is empty and `message.reasoning_content` is non-empty, use `message.reasoning_content`;
+- if both are empty, keep the current empty-output behavior;
+- do not disable reasoning;
+- do not strip or discard reasoning content before parsing;
+- do not treat use of `reasoning_content` as an error by itself.
+
+Record request diagnostics and normalized metadata:
+
+```json
+{
+  "output_source": "content",
+  "content_empty": false,
+  "reasoning_content_used": false,
+  "content_length": 42,
+  "reasoning_content_length": 0
+}
+```
+
+Allowed `output_source` values:
+
+- `content`;
+- `reasoning_content`;
+- `empty`.
+
+When `reasoning_content` is used, set:
+
+```json
+{
+  "output_source": "reasoning_content",
+  "content_empty": true,
+  "reasoning_content_used": true
+}
+```
+
+This metadata should be visible in `normalized/<request_id>.json` and in run-level request diagnostics when diagnostics are built.
+
+`raw/<request_id>.json` should continue to save the full raw LM Studio response. Its `raw_output` field should match the text actually passed to normalization.
+
 ## Request Identity
 
 Bump:
@@ -214,6 +277,13 @@ Add or update tests for:
 - config loads with `line_tags` as primary for free/plain-pool modes;
 - line-based responses still normalize correctly;
 - strict JSON responses still normalize correctly;
+- content extraction uses `message.content` when present;
+- content extraction falls back to `message.reasoning_content` when content is empty;
+- reasoning-content fallback parses strict JSON from `reasoning_content`;
+- reasoning-content fallback parses line tags from `reasoning_content`;
+- both content and reasoning_content empty remains an empty/no-answer result;
+- normalized output records `output_source`, `content_empty`, `reasoning_content_used`, and content lengths;
+- run-level request diagnostics include output-source fields;
 - request id changes when prompt version changes.
 
 ## Check
