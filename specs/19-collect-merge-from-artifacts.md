@@ -268,7 +268,11 @@ Manual partial-run check:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
+- Done: added `collect` pipeline from request artifacts (`run_manifest + requests/* + models.json`) to rebuild `summary.csv` and `diagnostics.json`; added staleness-driven auto-collect hook before `report`; added strict/non-strict behavior and lock warning semantics for collect.
+- Changed files: `src/collect.py`, `main.py`, `README.md`, `PROJECT_GUIDE.md`, `tests/test_collect.py`, `specs/19-collect-merge-from-artifacts.md`.
 - Checks run:
-- Notes:
+  - `python -m pytest -q tests/test_collect.py tests/test_report.py`
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
+- Notes: collect keeps graceful behavior for partial runs by emitting `incomplete_request` warnings and not creating fake summary rows for missing/running requests.

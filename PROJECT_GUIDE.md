@@ -69,6 +69,7 @@ python main.py list-models --config config.smoke.yaml
 python main.py run --config config.smoke.yaml
 python main.py run --config config.smoke.yaml --run-id smoke-001
 python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
+python main.py collect --run results/<run_id>
 python main.py report --run results/<run_id>
 ```
 
@@ -80,6 +81,7 @@ python main.py report --run results/<run_id>
 - `run` — основной запуск benchmark; при `report.generate_html: true` создает HTML-отчет автоматически.
 - `run --run-id <id>` — продолжить/повторить конкретный run-каталог с манифестом запросов.
 - `run --force-lock` — снять stale `run.lock` после аварийного завершения.
+- `collect --run` — пересобрать `summary.csv` и `diagnostics.json` из request-артефактов.
 - `report` — пересобрать HTML для уже существующей папки `results/<run_id>`.
 
 ## Конфиги
@@ -237,6 +239,9 @@ results/<run_id>/
 - `errors.log` — cleanup, skip/resume, ошибки загрузки и выгрузки.
 
 `results/*` игнорируются git-ом, кроме `results/.gitkeep`.
+
+Источник истины: `requests/<request_id>/*` + `models/*` + `run_manifest.json`.  
+`summary.csv`, `diagnostics.json`, `report.html`, `diagnostics.html` считаются производными и могут быть пересобраны.
 
 ## Код
 

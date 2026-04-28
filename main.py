@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from src.config import BenchmarkConfig, ConfigError, load_config
+from src.collect import collect_run, ensure_collected
 from src.image_loader import discover_images
 from src.lmstudio_client import LMStudioClient, LMStudioClientError
 from src.report import build_diagnostics_report, build_report
@@ -68,11 +69,24 @@ def cmd_report(args: argparse.Namespace) -> int:
     run_dir = Path(args.run)
     if not run_dir.exists():
         raise SystemExit(f"Run directory does not exist: {run_dir}")
+    ensure_collected(run_dir, strict=False)
     report_path = build_report(run_dir)
     diagnostics_path = build_diagnostics_report(run_dir)
     print(f"Report generated: {report_path}")
     if diagnostics_path is not None:
         print(f"Diagnostics report generated: {diagnostics_path}")
+    return 0
+
+
+def cmd_collect(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run)
+    if not run_dir.exists():
+        raise SystemExit(f"Run directory does not exist: {run_dir}")
+    result = collect_run(run_dir, write_reports=args.write_reports, strict=args.strict)
+    print(f"Summary rebuilt: {result['summary_path']}")
+    print(f"Diagnostics rebuilt: {result['diagnostics_path']}")
+    if args.write_reports:
+        print(f"Reports rebuilt in: {run_dir}")
     return 0
 
 
@@ -103,6 +117,12 @@ def build_parser() -> argparse.ArgumentParser:
     report = sub.add_parser("report", help="Build HTML report for an existing run")
     report.add_argument("--run", required=True)
     report.set_defaults(func=cmd_report)
+
+    collect = sub.add_parser("collect", help="Rebuild summary and diagnostics from request artifacts")
+    collect.add_argument("--run", required=True)
+    collect.add_argument("--write-reports", action="store_true")
+    collect.add_argument("--strict", action="store_true")
+    collect.set_defaults(func=cmd_collect)
 
     return parser
 

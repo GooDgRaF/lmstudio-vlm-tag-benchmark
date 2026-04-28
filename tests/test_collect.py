@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from src.collect import collect_run, ensure_collected
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _prepare_run(tmp_path: Path) -> Path:
+    run_dir = tmp_path / "results" / "r1"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(
+        run_dir / "run_manifest.json",
+        {
+            "schema_version": 1,
+            "run_id": "r1",
+            "config_path": "cfg.yaml",
+            "request_count": 1,
+            "requests": [
+                {
+                    "request_id": "req1",
+                    "model_label": "m1",
+                    "model_id": "m1@q4",
+                    "base_model_id": "m1",
+                    "image_id": "img1",
+                    "image_rel_path": "img1.jpg",
+                    "mode": "en_free",
+                    "prompt_version": "v2",
+                    "response_format_requested": "line_tags",
+                }
+            ],
+        },
+    )
+    _write_json(run_dir / "models.json", [{"label": "m1", "params": "4B", "quant": "Q4", "quant_bits": 4, "base_model_id": "m1"}])
+    _write_json(run_dir / "requests" / "req1" / "status.json", {"status": "success", "attempt": 1})
+    _write_json(
+        run_dir / "requests" / "req1" / "normalized.json",
+        {
+            "response_format_used": "line_tags",
+            "accepted_tags": ["cat"],
+            "accepted_ids": [],
+            "rejected_tags": [],
+            "rejected_ids": [],
+            "pool_violations": 0,
+            "parse_ok": True,
+            "schema_ok": True,
+            "json_extracted": False,
+            "line_fallback_used": False,
+            "pool_ok": True,
+            "latency_sec": 0.12,
+            "error_type": None,
+            "error": None,
+        },
+    )
+    _write_json(
+        run_dir / "requests" / "req1" / "diagnostics.json",
+        {
+            "request_id": "req1",
+            "model_label": "m1",
+            "model_id": "m1@q4",
+            "image_id": "img1",
+            "image_rel_path": "img1.jpg",
+            "mode": "en_free",
+            "latency_sec": 0.12,
+            "response_format_requested": "line_tags",
+            "response_format_used": "line_tags",
+            "parse_ok": True,
+            "schema_ok": True,
+            "pool_ok": True,
+            "pool_violations": 0,
+            "accepted_tag_count": 1,
+            "rejected_tag_count": 0,
+            "rejected_id_count": 0,
+            "raw_path": "requests/req1/raw.json",
+            "normalized_path": "requests/req1/normalized.json",
+        },
+    )
+    _write_json(
+        run_dir / "diagnostics.json",
+        {"schema_version": 1, "run": {"run_id": "r1", "model_count": 1, "image_count": 1, "mode_count": 1}, "pools": {}, "models": [], "requests": [], "warnings": []},
+    )
+    return run_dir
+
+
+def test_collect_rebuilds_summary_and_diagnostics(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    result = collect_run(run_dir)
+    assert result["summary_path"].exists()
+    assert result["diagnostics_path"].exists()
+    text = result["summary_path"].read_text(encoding="utf-8-sig")
+    assert "req1" in text
+    diagnostics = json.loads(result["diagnostics_path"].read_text(encoding="utf-8"))
+    assert diagnostics["run"]["is_partial"] is True
+    assert diagnostics["run"]["completed_request_count"] == 1
+
+
+def test_collect_marks_incomplete_request(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    (run_dir / "requests" / "req1" / "status.json").unlink()
+    result = collect_run(run_dir)
+    diagnostics = json.loads(result["diagnostics_path"].read_text(encoding="utf-8"))
+    warning_types = [item.get("type") for item in diagnostics["warnings"]]
+    assert "incomplete_request" in warning_types
+
+
+def test_ensure_collected_rebuilds_when_missing(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    (run_dir / "summary.csv").unlink(missing_ok=True)
+    (run_dir / "diagnostics.json").unlink(missing_ok=True)
+    ensure_collected(run_dir)
+    assert (run_dir / "summary.csv").exists()
+    assert (run_dir / "diagnostics.json").exists()

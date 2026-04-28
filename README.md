@@ -36,6 +36,7 @@ python main.py dry-run --config config.smoke.yaml
 python main.py run --config config.smoke.yaml
 python main.py run --config config.smoke.yaml --run-id smoke-001
 python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
+python main.py collect --run results/<run_id>
 python main.py report --run results/<run_id>
 ```
 
@@ -116,6 +117,9 @@ results/<run_id>/
 - `raw/` — сырые ответы LM Studio;
 - `normalized/` — нормализованные ответы, ошибки и диагностические поля;
 - `errors.log` — служебные события runner-а, включая cleanup загруженных моделей.
+
+После введения request-artifacts источником истины являются `requests/<request_id>/*`.  
+`summary.csv`, `diagnostics.json`, `report.html` и `diagnostics.html` — производные файлы, которые можно пересобрать через `collect/report`.
 
 ## Ограничения v1
 
