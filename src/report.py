@@ -119,15 +119,16 @@ def _render_chip(text: str, css_class: str) -> str:
     return f"<span class='chip {css_class}'>{html.escape(text)}</span>"
 
 
-def _render_answer_cell(cell: dict[str, Any] | None) -> str:
+def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     if cell is None:
         return ""
 
     accepted = cell.get("accepted_tags") or []
     rejected_tags = cell.get("rejected_tags") or []
     rejected_ids = cell.get("rejected_ids") or []
+    accepted_class = "free" if mode.endswith("_free") else "ok"
     chips: list[str] = []
-    chips.extend(_render_chip(tag, "ok") for tag in accepted)
+    chips.extend(_render_chip(tag, accepted_class) for tag in accepted)
     chips.extend(_render_chip(tag, "warn") for tag in rejected_tags)
     chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
     if not chips:
@@ -221,7 +222,7 @@ def build_report(run_dir: Path) -> Path:
             mode_label = MODE_LABELS.get(mode, mode)
             cells = []
             for model in model_order:
-                cell_html = _render_answer_cell(matrix.get((image_id, mode, model)))
+                cell_html = _render_answer_cell(matrix.get((image_id, mode, model)), mode)
                 cells.append(f"<td class='answer'>{cell_html}</td>")
 
             if row_index == 0:
@@ -276,7 +277,8 @@ def build_report(run_dir: Path) -> Path:
     .small {{ color: #64748b; font-size: 11px; word-break: break-word; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 4px; }}
     .chip {{ display: inline-block; border-radius: 999px; padding: 2px 7px; font-size: 11px; line-height: 1.2; border: 1px solid #cbd5e1; }}
-    .chip.ok {{ background: #eef2ff; border-color: #c7d2fe; }}
+    .chip.free {{ background: #eef2ff; border-color: #c7d2fe; }}
+    .chip.ok {{ background: #ecfdf3; border-color: #bbf7d0; color: #166534; }}
     .chip.warn {{ background: #fef2f2; border-color: #fecaca; color: #991b1b; }}
     .chip.mono {{ font-family: Consolas, monospace; }}
     .group {{ margin-bottom: 6px; }}
@@ -302,10 +304,10 @@ def build_report(run_dir: Path) -> Path:
   {duplicate_note}
   <div class='legend'>
     <span>Mode labels: RU/EN free, pool, pool+ (ID-based)</span>
-    <span>{_render_chip('accepted', 'ok')}</span>
+    <span>{_render_chip('free-mode tag', 'free')}</span>
+    <span>{_render_chip('pool match', 'ok')}</span>
     <span>{_render_chip('out of pool', 'warn')}</span>
-    <span><span class='state error'>error</span></span>
-    <span><span class='state muted'>not run / no answer</span></span>
+    <span>Empty cells mean no rendered tags for that request.</span>
   </div>
   <div class='table-wrap'>
     <table>

@@ -166,10 +166,11 @@ def test_report_matrix_and_escape(tmp_path):
     assert "Answer matrix report" in html
     assert "model-a&lt;script&gt;" in html
     assert "RU free" in html
-    assert "class='chip ok'" in html
+    assert "class='chip free'" in html
     assert "class='chip warn'" in html
     assert "<div class='label'>" not in html
     assert ">pool violation<" not in html
+    assert "request_error" not in html
     assert "&lt;boom&gt;" not in html
     assert "Diagnostics report" in html
     assert "prompt_tokens" not in html
@@ -273,6 +274,66 @@ def test_duplicate_rows_last_wins_and_not_run(tmp_path):
     assert "Duplicate request rows: 1" in html
     assert "new" in html
     assert "old" not in html
+
+
+def test_pool_matches_are_green_and_pool_failures_not_rendered_as_text(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    image = run_dir / "img.jpg"
+    image.write_bytes(b"\xff\xd8\xff\xd9")
+    (run_dir / "run_config.yaml").write_text("modes:\n  - en_pool\n", encoding="utf-8")
+
+    _write_summary(
+        run_dir / "summary.csv",
+        [
+            {
+                "run_id": "run",
+                "request_id": "r1",
+                "model_id": "m",
+                "base_model_id": "b",
+                "model_label": "model-a",
+                "params": "4B",
+                "quant": "Q4",
+                "quant_bits": "4",
+                "image_id": "image-1",
+                "image_path": str(image),
+                "image_rel_path": "ImgToTag/img.jpg",
+                "mode": "en_pool",
+                "prompt_version": "v1",
+                "response_format_requested": "strict_json",
+                "response_format_used": "strict_json",
+                "accepted_tags": '["Human"]',
+                "accepted_ids": "[]",
+                "rejected_tags": '["Invented"]',
+                "rejected_ids": "[]",
+                "tag_count": "1",
+                "pool_violations": "1",
+                "parse_ok": "true",
+                "schema_ok": "true",
+                "json_extracted": "false",
+                "line_fallback_used": "false",
+                "pool_ok": "false",
+                "latency_sec": "1.0",
+                "prompt_tokens": "1",
+                "completion_tokens": "1",
+                "total_tokens": "2",
+                "requested_context_length": "16000",
+                "actual_context_length": "16000",
+                "context_near_limit": "false",
+                "context_overflow": "false",
+                "output_truncated": "false",
+                "gpu_memory_before_mb": "100",
+                "gpu_memory_after_mb": "200",
+                "error_type": "pool_validation_failed",
+                "error": "Response contains values outside configured pool",
+            }
+        ],
+    )
+
+    html = build_report(run_dir).read_text(encoding="utf-8")
+    assert "class='chip ok'>Human" in html
+    assert "class='chip warn'>Invented" in html
+    assert "pool_validation_failed" not in html
 
 
 def test_diagnostics_html_and_cross_links(tmp_path):

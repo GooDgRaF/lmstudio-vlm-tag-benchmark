@@ -1,0 +1,162 @@
+lmstudio:
+  host: http://localhost:1234
+  api_base_url: http://localhost:1234/api/v1
+  openai_base_url: http://localhost:1234/v1
+  api_key: lm-studio
+models:
+- id: qwen/qwen3-vl-8b@q4_k_m
+  base_model_id: qwen/qwen3-vl-8b
+  label: qwen3-vl-8b-q4_k_m
+  display_name: Qwen3 VL 8B
+  params: 8B
+  architecture: qwen3vl
+  quant: Q4_K_M
+  quant_bits: 4
+  size_bytes: 6186994398
+  max_context_length: 262144
+- id: qwen/qwen3-vl-4b@q4_k_m
+  base_model_id: qwen/qwen3-vl-4b
+  label: qwen3-vl-4b-q4_k_m
+  display_name: Qwen3 VL 4B
+  params: 4B
+  architecture: qwen3vl
+  quant: Q4_K_M
+  quant_bits: 4
+  size_bytes: 3333641502
+  max_context_length: 262144
+- id: qwen/qwen3-vl-4b@q8_0
+  base_model_id: qwen/qwen3-vl-4b
+  label: qwen3-vl-4b-q8_0
+  display_name: Qwen3 VL 4B
+  params: 4B
+  architecture: qwen3vl
+  quant: Q8_0
+  quant_bits: 8
+  size_bytes: null
+  max_context_length: 262144
+- id: qwen/qwen3.5-9b@q4_k_m
+  base_model_id: qwen/qwen3.5-9b
+  label: qwen3_5-9b-q4_k_m
+  display_name: Qwen3.5 9B
+  params: 9B
+  architecture: qwen35
+  quant: Q4_K_M
+  quant_bits: 4
+  size_bytes: 6548927017
+  max_context_length: 262144
+- id: qwen/qwen3.5-9b@q6_k
+  base_model_id: qwen/qwen3.5-9b
+  label: qwen3_5-9b-q6_k
+  display_name: Qwen3.5 9B
+  params: 9B
+  architecture: qwen35
+  quant: Q6_K
+  quant_bits: 6
+  size_bytes: null
+  max_context_length: 262144
+- id: google/gemma-4-e2b@q8_0
+  base_model_id: google/gemma-4-e2b
+  label: gemma-4-e2b-q8_0
+  display_name: Gemma 4 E2B
+  params: 4.6B
+  architecture: gemma4
+  quant: Q8_0
+  quant_bits: 8
+  size_bytes: 5954422928
+  max_context_length: 131072
+- id: google/gemma-4-e4b@q4_k_m
+  base_model_id: google/gemma-4-e4b
+  label: gemma-4-e4b-q4_k_m
+  display_name: Gemma 4 E4B
+  params: 7.5B
+  architecture: gemma4
+  quant: Q4_K_M
+  quant_bits: 4
+  size_bytes: 6326936720
+  max_context_length: 131072
+- id: google/gemma-4-e4b@q6_k
+  base_model_id: google/gemma-4-e4b
+  label: gemma-4-e4b-q6_k
+  display_name: Gemma 4 E4B
+  params: 7.5B
+  architecture: gemma4
+  quant: Q6_K
+  quant_bits: 6
+  size_bytes: null
+  max_context_length: 131072
+input:
+  image_dir: F:\Works\Иные проекты\Local VLM benchmark\ImgToTag
+  recursive: false
+  extensions:
+  - .jpg
+  - .jpeg
+  - .png
+  - .webp
+  - .bmp
+output:
+  results_dir: results
+modes:
+- en_free
+pools:
+  ru_plain: pools/ru_plain.txt
+  en_plain: pools/en_plain.txt
+  ru_explained: pools/ru_explained_ids.tsv
+  en_explained: pools/en_explained_ids.tsv
+generation:
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 256
+load:
+  context_length: 16384
+  flash_attention: true
+  offload_kv_cache_to_gpu: true
+  echo_load_config: true
+limits:
+  max_tags: 10
+  timeout_sec: 180
+  retries: 1
+  limit_images: 1
+response_formats:
+  free_modes:
+    primary: strict_json
+    fallback: line_tags
+  plain_pool_modes:
+    primary: strict_json
+    fallback: line_tags
+  explained_pool_modes:
+    primary: line_ids
+    fallback: null
+validation:
+  use_response_format: true
+  allow_json_extraction: true
+  allow_line_fallback: true
+  drop_tags_not_in_pool: true
+  save_invalid_results: true
+diagnostics:
+  gpu_memory:
+    enabled: true
+    command: nvidia-smi
+    fail_if_unavailable: false
+  context:
+    record_usage_tokens: true
+    warning_ratio: 0.85
+    error_ratio: 0.97
+    classify_context_errors: true
+runtime:
+  unload_model_after_run: true
+  resume: false
+  skip_existing_success: false
+  retry_existing_errors: false
+  sleep_after_load_sec: 2
+  image_request_smoke_test: false
+report:
+  generate_csv: true
+  generate_html: true
+  open_html_after_run: false
+  thumbnail_size: 256
+evaluation:
+  track_quality_for_manual_review: true
+  track_speed: true
+  track_json_stability: true
+  track_pool_compliance: true
+  track_hallucinated_tags: true

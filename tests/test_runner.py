@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+from base64 import b64decode
 import yaml
 
+from PIL import Image
+
 from src.config import load_config
-from src.runner import run_benchmark
+from src.runner import _to_data_url, run_benchmark
 from tests.helpers import build_config
 
 
@@ -71,6 +74,28 @@ def test_runner_vertical_slice_saves_raw_and_normalized(tmp_path, monkeypatch):
     assert len(normalized_files) == 1
     assert (run_dir / "report.html").exists()
     assert (run_dir / "diagnostics.json").exists()
+
+
+def test_to_data_url_normalizes_non_png_jpeg_images(tmp_path):
+    image_path = tmp_path / "image.bmp"
+    Image.new("RGB", (2, 2), color=(255, 0, 0)).save(image_path)
+
+    data_url = _to_data_url(str(image_path))
+
+    assert data_url.startswith("data:image/jpeg;base64,")
+    payload = data_url.split(",", 1)[1]
+    assert b64decode(payload).startswith(b"\xff\xd8")
+
+
+def test_to_data_url_normalizes_webp_images(tmp_path):
+    image_path = tmp_path / "image.webp"
+    Image.new("RGB", (2, 2), color=(0, 255, 0)).save(image_path)
+
+    data_url = _to_data_url(str(image_path))
+
+    assert data_url.startswith("data:image/jpeg;base64,")
+    payload = data_url.split(",", 1)[1]
+    assert b64decode(payload).startswith(b"\xff\xd8")
 
 
 def test_runner_attempts_all_modes_for_image(tmp_path, monkeypatch):

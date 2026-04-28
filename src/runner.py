@@ -5,9 +5,12 @@ import csv
 import json
 import sys
 import time
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from PIL import Image
 
 from src.config import BenchmarkConfig, ModelConfig
 from src.diagnostics import (
@@ -36,9 +39,21 @@ from src.validator import normalize_model_output
 def _to_data_url(path: str) -> str:
     p = Path(path)
     suffix = p.suffix.lower().lstrip(".") or "jpeg"
-    mime = "jpeg" if suffix == "jpg" else suffix
-    encoded = base64.b64encode(p.read_bytes()).decode("ascii")
-    return f"data:image/{mime};base64,{encoded}"
+    if suffix in {"jpg", "jpeg"}:
+        encoded = base64.b64encode(p.read_bytes()).decode("ascii")
+        return f"data:image/jpeg;base64,{encoded}"
+    if suffix == "png":
+        encoded = base64.b64encode(p.read_bytes()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+
+    # LM Studio's OpenAI-compatible endpoint can reject WEBP/BMP data URLs even
+    # though those files are valid benchmark inputs. Normalize them to JPEG for
+    # request payloads while keeping the original files and result metadata.
+    with Image.open(p) as image:
+        output = BytesIO()
+        image.convert("RGB").save(output, format="JPEG", quality=95)
+    encoded = base64.b64encode(output.getvalue()).decode("ascii")
+    return f"data:image/jpeg;base64,{encoded}"
 
 
 def _build_messages(prompt: str, image_path: str) -> list[dict[str, Any]]:
