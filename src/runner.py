@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 import base64
+import csv
 import json
+import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from src.config import BenchmarkConfig, ModelConfig
-from src.diagnostics import classify_load_error, collect_gpu_memory, extract_usage_diagnostics
+from src.diagnostics import (
+    build_pool_diagnostics,
+    classify_load_error,
+    collect_gpu_memory,
+    detect_git_commit,
+    extract_usage_diagnostics,
+    now_timestamp,
+    shorten_error,
+    summarize_model_requests,
+)
 from src.image_loader import DiscoveredImage, discover_images
 from src.lmstudio_client import (
     LMStudioClient,
@@ -15,7 +27,7 @@ from src.lmstudio_client import (
     ResponseFormatUnsupportedError,
 )
 from src.prompts import PROMPT_VERSION, build_prompt, strict_json_response_format
-from src.report import build_report
+from src.report import build_diagnostics_report, build_report
 from src.storage import build_request_id, create_run_storage
 from src.tag_pools import TagPools, load_tag_pools
 from src.validator import normalize_model_output
@@ -116,6 +128,10 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
     run_id, storage = create_run_storage(cfg)
     storage.init_summary_csv()
     client = LMStudioClient.from_config(cfg)
+    started_at = datetime.now()
+    started_at_str = now_timestamp()
+    requests_diag: list[dict[str, Any]] = []
+    models_diag: list[dict[str, Any]] = []
 
     try:
         client.list_models()
@@ -123,6 +139,30 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
         raise RuntimeError(f"LM Studio availability check failed: {exc}") from exc
 
     for model in cfg.models:
+        model_diag: dict[str, Any] = {
+            "model_label": model.label,
+            "model_id": model.id,
+            "base_model_id": model.base_model_id,
+            "params": model.params,
+            "quant": model.quant,
+            "quant_bits": model.quant_bits,
+            "load_started_at": now_timestamp(),
+            "load_finished_at": None,
+            "load_duration_sec": None,
+            "load_ok": False,
+            "load_error_type": None,
+            "load_error": None,
+            "instance_id": None,
+            "requested_context_length": cfg.load.context_length,
+            "actual_context_length": None,
+            "smoke_test_ok": None,
+            "smoke_test_error": None,
+            "gpu_before_load": {},
+            "gpu_after_load": {},
+            "gpu_after_unload": {},
+            "unload_ok": None,
+            "unload_error": None,
+        }
         # Proactively clear any previously loaded instances so each request starts clean.
         unloaded = client.unload_all_loaded_models()
         if unloaded:
@@ -132,9 +172,15 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
 
         gpu_before = collect_gpu_memory(cfg)
         storage.save_model_metadata(model.label, "gpu_before_load.json", gpu_before)
+        model_diag["gpu_before_load"] = gpu_before
         loaded = None
+        load_started_perf = time.perf_counter()
         try:
             loaded = client.load_model(model, cfg.load.as_payload())
+            model_diag["load_ok"] = True
+            model_diag["instance_id"] = loaded.instance_id
+            model_diag["actual_context_length"] = loaded.actual_context_length
+            model_diag["requested_context_length"] = loaded.requested_context_length
             storage.save_model_metadata(
                 model.label,
                 "load.json",
@@ -149,26 +195,47 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
         except LMStudioClientError as exc:
             error_type = classify_load_error(str(exc))
             storage.append_error(f"{model.label}: {error_type}: {exc}")
+            model_diag["load_error_type"] = error_type
+            model_diag["load_error"] = shorten_error(str(exc))
             storage.save_model_metadata(
                 model.label,
                 "load.json",
                 {"ok": False, "error_type": error_type, "error": str(exc)},
             )
+            model_diag["load_finished_at"] = now_timestamp()
+            model_diag["load_duration_sec"] = round(time.perf_counter() - load_started_perf, 4)
+            model_diag.update(summarize_model_requests([]))
+            models_diag.append(model_diag)
             continue
+        model_diag["load_finished_at"] = now_timestamp()
+        model_diag["load_duration_sec"] = round(time.perf_counter() - load_started_perf, 4)
 
         gpu_after = collect_gpu_memory(cfg)
         storage.save_model_metadata(model.label, "gpu_after_load.json", gpu_after)
+        model_diag["gpu_after_load"] = gpu_after
 
         if cfg.runtime.image_request_smoke_test:
             smoke = _run_smoke_test(client, loaded.instance_id, images[0] if images else None)
             storage.save_model_metadata(model.label, "smoke_test.json", smoke)
+            model_diag["smoke_test_ok"] = bool(smoke.get("ok"))
+            model_diag["smoke_test_error"] = shorten_error(smoke.get("error"))
             if not smoke.get("ok"):
                 if cfg.runtime.unload_model_after_run:
                     try:
                         client.unload_model(loaded.instance_id, model.id)
-                    except LMStudioClientError:
-                        pass
+                        model_diag["unload_ok"] = True
+                    except LMStudioClientError as exc:
+                        model_diag["unload_ok"] = False
+                        model_diag["unload_error"] = shorten_error(str(exc))
+                gpu_after_unload = collect_gpu_memory(cfg)
+                storage.save_model_metadata(model.label, "gpu_after_unload.json", gpu_after_unload)
+                model_diag["gpu_after_unload"] = gpu_after_unload
+                model_diag.update(summarize_model_requests([]))
+                models_diag.append(model_diag)
                 continue
+        else:
+            model_diag["smoke_test_ok"] = None
+            model_diag["smoke_test_error"] = None
 
         for image in images:
             for mode in cfg.modes:
@@ -275,6 +342,45 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                             "gpu_memory_after_mb": gpu_after.get("memory_used_mb"),
                         }
                     )
+                    request_diag = {
+                        "request_id": request_id,
+                        "model_label": model.label,
+                        "model_id": model.id,
+                        "image_id": image.image_id,
+                        "image_rel_path": image.image_rel_path,
+                        "mode": mode,
+                        "prompt_version": prompt.prompt_version,
+                        "response_format_requested": prompt.response_format_requested,
+                        "response_format_used": response_format_used,
+                        "latency_sec": latency,
+                        "retry_count": 0,
+                        "retried_without_response_format": retried_without_response_format,
+                        "parse_ok": False,
+                        "schema_ok": False,
+                        "pool_ok": False if mode.endswith("_pool") else True,
+                        "pool_violations": 0,
+                        "error_type": "request_error",
+                        "error": shorten_error(str(exc)),
+                        "finish_reason": None,
+                        "prompt_tokens": None,
+                        "completion_tokens": None,
+                        "total_tokens": None,
+                        "requested_context_length": cfg.load.context_length,
+                        "actual_context_length": loaded.actual_context_length,
+                        "context_near_limit": False,
+                        "context_overflow": False,
+                        "output_truncated": False,
+                        "accepted_tag_count": 0,
+                        "rejected_tag_count": 0,
+                        "rejected_id_count": 0,
+                        "json_extracted": False,
+                        "line_fallback_used": False,
+                        "empty_output": True,
+                        "raw_output_length": 0,
+                        "raw_path": storage.raw_path(request_id).relative_to(storage.run_dir).as_posix(),
+                        "normalized_path": storage.normalized_path(request_id).relative_to(storage.run_dir).as_posix(),
+                    }
+                    requests_diag.append(request_diag)
                     continue
 
                 latency = round(time.perf_counter() - start, 4)
@@ -372,6 +478,45 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                             "error": normalized["error"],
                         }
                     )
+                request_diag = {
+                    "request_id": request_id,
+                    "model_label": model.label,
+                    "model_id": model.id,
+                    "image_id": image.image_id,
+                    "image_rel_path": image.image_rel_path,
+                    "mode": mode,
+                    "prompt_version": normalized["prompt_version"],
+                    "response_format_requested": normalized["response_format_requested"],
+                    "response_format_used": normalized["response_format_used"],
+                    "latency_sec": latency,
+                    "retry_count": 1 if retried_without_response_format else 0,
+                    "retried_without_response_format": retried_without_response_format,
+                    "parse_ok": bool(normalized["parse_ok"]),
+                    "schema_ok": bool(normalized["schema_ok"]),
+                    "pool_ok": bool(normalized["pool_ok"]),
+                    "pool_violations": int(normalized["pool_violations"]),
+                    "error_type": normalized["error_type"],
+                    "error": shorten_error(normalized["error"]),
+                    "finish_reason": normalized.get("finish_reason"),
+                    "prompt_tokens": normalized.get("prompt_tokens"),
+                    "completion_tokens": normalized.get("completion_tokens"),
+                    "total_tokens": normalized.get("total_tokens"),
+                    "requested_context_length": cfg.load.context_length,
+                    "actual_context_length": loaded.actual_context_length,
+                    "context_near_limit": bool(normalized.get("context_near_limit")),
+                    "context_overflow": bool(normalized.get("context_overflow")),
+                    "output_truncated": bool(normalized.get("output_truncated")),
+                    "accepted_tag_count": len(normalized.get("accepted_tags") or []),
+                    "rejected_tag_count": len(normalized.get("rejected_tags") or []),
+                    "rejected_id_count": len(normalized.get("rejected_ids") or []),
+                    "json_extracted": bool(normalized.get("json_extracted")),
+                    "line_fallback_used": bool(normalized.get("line_fallback_used")),
+                    "empty_output": len((raw_text or "").strip()) == 0,
+                    "raw_output_length": len(raw_text or ""),
+                    "raw_path": storage.raw_path(request_id).relative_to(storage.run_dir).as_posix(),
+                    "normalized_path": storage.normalized_path(request_id).relative_to(storage.run_dir).as_posix(),
+                }
+                requests_diag.append(request_diag)
 
         if cfg.runtime.unload_model_after_run:
             try:
@@ -380,10 +525,73 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                     storage.append_error(
                         f"{model.label}: post_run_unload: removed {len(unloaded_after)} loaded instance(s)"
                     )
+                model_diag["unload_ok"] = True
             except LMStudioClientError as exc:
                 storage.append_error(f"{model.label}: unload_failed: {exc}")
+                model_diag["unload_ok"] = False
+                model_diag["unload_error"] = shorten_error(str(exc))
+        gpu_after_unload = collect_gpu_memory(cfg)
+        storage.save_model_metadata(model.label, "gpu_after_unload.json", gpu_after_unload)
+        model_diag["gpu_after_unload"] = gpu_after_unload
+        model_requests = [item for item in requests_diag if item["model_label"] == model.label]
+        model_diag.update(summarize_model_requests(model_requests))
+        models_diag.append(model_diag)
 
+    warning_items: list[dict[str, Any]] = []
+    summary_rows: list[dict[str, str]] = []
+    if storage.summary_csv_path.exists():
+        with storage.summary_csv_path.open("r", encoding="utf-8-sig", newline="") as fh:
+            summary_rows = list(csv.DictReader(fh))
+    duplicate_index: dict[tuple[str, str, str], list[dict[str, str]]] = {}
+    for row in summary_rows:
+        key = (row.get("image_id", ""), row.get("mode", ""), row.get("model_label", ""))
+        duplicate_index.setdefault(key, []).append(row)
+    for (image_id, mode, model_label), items in duplicate_index.items():
+        if len(items) > 1:
+            warning_items.append(
+                {
+                    "type": "duplicate_summary_rows",
+                    "key": {"image_id": image_id, "mode": mode, "model_label": model_label},
+                    "count": len(items),
+                    "used_request_id": items[-1].get("request_id"),
+                }
+            )
+
+    run_error_count = sum(1 for item in requests_diag if item.get("error_type"))
+    run_success_count = len(requests_diag) - run_error_count
+    pool_violation_count = sum(int(item.get("pool_violations") or 0) for item in requests_diag)
+    finished_at = datetime.now()
+    diagnostics_payload = {
+        "schema_version": 1,
+        "run": {
+            "run_id": run_id,
+            "started_at": started_at_str,
+            "finished_at": now_timestamp(),
+            "duration_sec": round((finished_at - started_at).total_seconds(), 4),
+            "config_path": str(cfg.config_path),
+            "results_dir": str(storage.run_dir),
+            "image_dir": str(cfg.input.image_dir),
+            "recursive": bool(cfg.input.recursive),
+            "limit_images": limit if limit is not None else cfg.limits.limit_images,
+            "extensions": list(cfg.input.extensions),
+            "model_count": len(cfg.models),
+            "image_count": len(images),
+            "mode_count": len(cfg.modes),
+            "request_count": len(requests_diag),
+            "success_count": run_success_count,
+            "error_count": run_error_count,
+            "pool_violation_count": pool_violation_count,
+            "python_version": sys.version.split()[0],
+            "git_commit": detect_git_commit(),
+        },
+        "pools": build_pool_diagnostics(cfg, pools),
+        "models": models_diag,
+        "requests": requests_diag,
+        "warnings": warning_items,
+    }
+    storage.save_diagnostics(diagnostics_payload)
     if cfg.report.generate_html:
         build_report(storage.run_dir)
+        build_diagnostics_report(storage.run_dir)
 
     return storage.run_dir

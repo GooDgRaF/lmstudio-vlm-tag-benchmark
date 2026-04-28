@@ -3,7 +3,15 @@ from __future__ import annotations
 import subprocess
 
 from src.config import load_config
-from src.diagnostics import classify_load_error, collect_gpu_memory, extract_usage_diagnostics
+from src.diagnostics import (
+    build_pool_diagnostics,
+    classify_load_error,
+    collect_gpu_memory,
+    detect_git_commit,
+    extract_usage_diagnostics,
+    summarize_model_requests,
+)
+from src.tag_pools import load_tag_pools
 from tests.helpers import build_config
 
 
@@ -58,3 +66,31 @@ def test_usage_and_context_flags():
     assert out["context_near_limit"] is True
     assert out["output_truncated"] is True
 
+
+def test_pool_diagnostics_has_hashes(tmp_path):
+    cfg = load_config(build_config(tmp_path))
+    pools = load_tag_pools(cfg)
+    payload = build_pool_diagnostics(cfg, pools)
+    assert set(payload.keys()) == {"ru_plain", "en_plain", "ru_explained", "en_explained"}
+    assert payload["ru_plain"]["sha256"]
+    assert payload["en_explained"]["entry_count"] >= 1
+
+
+def test_model_request_summary_stats():
+    reqs = [
+        {"latency_sec": 1.0, "parse_ok": True, "schema_ok": True, "pool_ok": True, "pool_violations": 0},
+        {"latency_sec": 2.0, "parse_ok": False, "schema_ok": True, "pool_ok": False, "pool_violations": 1, "error_type": "request_error"},
+    ]
+    out = summarize_model_requests(reqs)
+    assert out["request_count"] == 2
+    assert out["error_count"] == 1
+    assert out["median_latency_sec"] == 1.5
+
+
+def test_detect_git_commit_best_effort(monkeypatch):
+    class FakeProc:
+        returncode = 1
+        stdout = ""
+
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: FakeProc())
+    assert detect_git_commit() is None

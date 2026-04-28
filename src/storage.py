@@ -143,6 +143,11 @@ class RunStorage:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return path
 
+    def save_diagnostics(self, payload: dict[str, Any]) -> Path:
+        path = self.run_dir / "diagnostics.json"
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return path
+
     def append_error(self, message: str) -> None:
         with self.errors_log_path.open("a", encoding="utf-8") as fh:
             fh.write(message.rstrip("\n") + "\n")
@@ -185,4 +190,3 @@ def create_run_storage(cfg: BenchmarkConfig, run_id: str | None = None) -> tuple
     storage.save_run_config(cfg)
     storage.save_models(cfg.models)
     return selected_run_id, storage
-

@@ -70,6 +70,7 @@ def test_runner_vertical_slice_saves_raw_and_normalized(tmp_path, monkeypatch):
     assert len(raw_files) == 1
     assert len(normalized_files) == 1
     assert (run_dir / "report.html").exists()
+    assert (run_dir / "diagnostics.json").exists()
 
 
 def test_runner_attempts_all_modes_for_image(tmp_path, monkeypatch):
@@ -127,3 +128,19 @@ def test_smoke_test_failure_skips_model(tmp_path, monkeypatch):
     assert len(rows) == 1  # header only
     smoke = json.loads((run_dir / "models" / "m1_q4" / "smoke_test.json").read_text(encoding="utf-8"))
     assert smoke["ok"] is False
+
+
+def test_runner_writes_gpu_after_unload_and_model_diag(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = False
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", FakeClient)
+    run_dir = run_benchmark(cfg, limit=1)
+
+    assert (run_dir / "models" / "m1_q4" / "gpu_after_unload.json").exists()
+    diagnostics = json.loads((run_dir / "diagnostics.json").read_text(encoding="utf-8"))
+    assert diagnostics["schema_version"] == 1
+    assert diagnostics["models"][0]["model_label"] == "m1_q4"

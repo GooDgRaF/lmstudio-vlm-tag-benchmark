@@ -425,6 +425,7 @@ results/<run_id>/models/<model_label>/gpu_after_unload.json
 Fill this after implementation:
 
 - Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added run/model/request diagnostics aggregation and persisted `results/<run_id>/diagnostics.json`; added pool hashes/counts, duplicate-summary warnings, best-effort git commit detection, and per-model `gpu_after_unload.json` snapshots.
+- Changed files: src/runner.py; src/diagnostics.py; src/storage.py; tests/test_runner.py; tests/test_diagnostics.py; tests/test_storage.py
+- Checks run: python -m pytest -q tests/test_diagnostics.py tests/test_storage.py tests/test_runner.py tests/test_report.py; python main.py dry-run --config config.smoke.yaml
+- Notes: `diagnostics.json` keeps compact fields and links to raw/normalized artifacts instead of duplicating large backend payloads.
