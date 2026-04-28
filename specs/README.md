@@ -4,6 +4,8 @@ This folder contains small implementation specs for the coding agent.
 
 Specs must be implemented in numeric order. Work on **one spec at a time**.
 
+Completed specs are stored in `archive/`. The current active spec lives in this folder.
+
 ## Workflow
 
 For each spec:
@@ -45,6 +47,7 @@ Related files:
 
 - [README](../README.md)
 - [Architecture](../ARCHITECTURE.md)
+- [Archived specs](./archive/)
 
 Expected files:
 
