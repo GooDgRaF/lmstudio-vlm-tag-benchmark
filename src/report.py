@@ -3,6 +3,7 @@
 import csv
 import html
 import json
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -136,6 +137,27 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     return f"<div class='chips'>{''.join(chips)}</div>"
 
 
+def _to_float(value: Any) -> float | None:
+    try:
+        x = float(value)
+    except (TypeError, ValueError):
+        return None
+    if x <= 0:
+        return None
+    return x
+
+
+def _read_diagnostics(run_dir: Path) -> dict[str, Any]:
+    path = run_dir / "diagnostics.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def build_report(run_dir: Path) -> Path:
     summary_path = run_dir / "summary.csv"
     if not summary_path.exists():
@@ -147,6 +169,13 @@ def build_report(run_dir: Path) -> Path:
     mode_order = _read_mode_order(run_dir)
     mode_rank = {mode: idx for idx, mode in enumerate(mode_order)}
     thumbnail_size = _read_thumbnail_size(run_dir)
+    diagnostics = _read_diagnostics(run_dir)
+    diag_run = diagnostics.get("run") if isinstance(diagnostics, dict) else {}
+    if not isinstance(diag_run, dict):
+        diag_run = {}
+    diag_requests = diagnostics.get("requests") if isinstance(diagnostics, dict) else []
+    if not isinstance(diag_requests, list):
+        diag_requests = []
 
     model_order = _read_models_json(run_dir)
     observed_models: list[str] = []
@@ -192,6 +221,54 @@ def build_report(run_dir: Path) -> Path:
     request_count = len(rows)
     error_count = sum(1 for r in rows if (r.get("error_type") or "").strip())
     pool_violations = sum(_to_int(r.get("pool_violations"), default=0) for r in rows)
+
+    request_latencies: list[tuple[str, float]] = []
+    if diag_requests:
+        for item in diag_requests:
+            if not isinstance(item, dict):
+                continue
+            latency = _to_float(item.get("latency_sec"))
+            if latency is None:
+                continue
+            request_latencies.append((str(item.get("request_id") or ""), latency))
+    else:
+        for row in rows:
+            latency = _to_float(row.get("latency_sec"))
+            if latency is None:
+                continue
+            request_latencies.append((str(row.get("request_id") or ""), latency))
+
+    avg_request_latency = round(statistics.mean([x[1] for x in request_latencies]), 4) if request_latencies else None
+    fastest_request = min(request_latencies, key=lambda x: x[1]) if request_latencies else None
+    slowest_request = max(request_latencies, key=lambda x: x[1]) if request_latencies else None
+
+    image_totals: dict[str, float] = {}
+    if diag_requests:
+        for item in diag_requests:
+            if not isinstance(item, dict):
+                continue
+            latency = _to_float(item.get("latency_sec"))
+            if latency is None:
+                continue
+            image_id = str(item.get("image_id") or "")
+            if not image_id:
+                continue
+            image_totals[image_id] = image_totals.get(image_id, 0.0) + latency
+    else:
+        for row in rows:
+            latency = _to_float(row.get("latency_sec"))
+            if latency is None:
+                continue
+            image_id = str(row.get("image_id") or "")
+            if not image_id:
+                continue
+            image_totals[image_id] = image_totals.get(image_id, 0.0) + latency
+    avg_image_total = round(statistics.mean(image_totals.values()), 4) if image_totals else None
+    fastest_image = min(image_totals.items(), key=lambda x: x[1]) if image_totals else None
+    slowest_image = max(image_totals.items(), key=lambda x: x[1]) if image_totals else None
+    is_partial = bool(diag_run.get("is_partial"))
+    expected_request_count = _to_int(diag_run.get("expected_request_count"), default=request_count)
+    completed_request_count = _to_int(diag_run.get("completed_request_count"), default=request_count)
 
     header_cells = "".join(f"<th class='model-col'>{html.escape(model)}</th>" for model in model_order)
 
@@ -287,18 +364,40 @@ def build_report(run_dir: Path) -> Path:
     .state.error {{ color: #b91c1c; }}
     .state.muted {{ color: #6b7280; }}
     tr.matrix-row:nth-child(6n + 1) td {{ border-top: 2px solid #94a3b8; }}
+    @media print {{
+      body {{ background: #fff; color: #111; margin: 8px; font-size: 10px; }}
+      .topline {{ gap: 4px; }}
+      .badge {{ padding: 2px 6px; font-size: 10px; }}
+      .table-wrap {{ overflow: visible; border: 0; }}
+      table {{ min-width: 0; }}
+      th, td {{ padding: 3px; font-size: 9px; }}
+      thead th, th.image-col, td.image-cell, th.mode-col, td.mode-cell {{ position: static !important; }}
+      .thumb {{ max-width: 180px; }}
+      a {{ text-decoration: none; color: #000; }}
+      .chip {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+      .small {{ display: none; }}
+      tr.matrix-row {{ break-inside: avoid; page-break-inside: avoid; }}
+    }}
   </style>
 </head>
 <body>
   <h1>Answer matrix report</h1>
   <div class='topline'>
     <span class='badge'>run: {html.escape(run_dir.name)}</span>
+    <span class='badge'>completion: {"partial" if is_partial else "complete"}</span>
+    <span class='badge'>completed: {completed_request_count}/{expected_request_count}</span>
     <span class='badge'>images: {len(image_order)}</span>
     <span class='badge'>models: {len(model_order)}</span>
     <span class='badge'>modes: {len(top_mode_sequence)}</span>
     <span class='badge'>requests: {request_count}</span>
     <span class='badge'>errors: {error_count}</span>
     <span class='badge'>pool violations: {pool_violations}</span>
+    <span class='badge'>avg req latency: {avg_request_latency if avg_request_latency is not None else "-"}</span>
+    <span class='badge'>fastest req: {(fastest_request[0] + " (" + str(round(fastest_request[1],4)) + "s)") if fastest_request else "-"}</span>
+    <span class='badge'>slowest req: {(slowest_request[0] + " (" + str(round(slowest_request[1],4)) + "s)") if slowest_request else "-"}</span>
+    <span class='badge'>avg image total: {avg_image_total if avg_image_total is not None else "-"}</span>
+    <span class='badge'>fastest image: {(fastest_image[0] + " (" + str(round(fastest_image[1],4)) + "s)") if fastest_image else "-"}</span>
+    <span class='badge'>slowest image: {(slowest_image[0] + " (" + str(round(slowest_image[1],4)) + "s)") if slowest_image else "-"}</span>
     {diagnostics_link}
   </div>
   {duplicate_note}

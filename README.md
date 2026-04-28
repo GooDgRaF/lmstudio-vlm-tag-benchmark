@@ -113,6 +113,7 @@ results/<run_id>/
 Главные файлы:
 
 - `report.html` — основной HTML-отчет в формате answer matrix (image x mode x model -> answer);
+- `report.html` содержит компактную верхнюю статистику (complete/partial, latency summary по запросам и изображениям) и print-friendly CSS;
 - `summary.csv` — таблица для Excel и дальнейшего анализа;
 - `raw/` — сырые ответы LM Studio;
 - `normalized/` — нормализованные ответы, ошибки и диагностические поля;

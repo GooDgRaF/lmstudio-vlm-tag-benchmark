@@ -230,6 +230,7 @@ results/<run_id>/
 Что смотреть:
 
 - `report.html` — первая точка входа после запуска (answer matrix для сравнения моделей по image x mode);
+- `report.html` также показывает компактный timing-summary и корректно печатается через браузерный print preview;
 - `summary.csv` — таблица по всем запросам;
 - `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
 - `requests/<request_id>/` — каноничные request-артефакты (`request/status/raw/normalized/diagnostics`);

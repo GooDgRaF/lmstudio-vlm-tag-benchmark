@@ -251,7 +251,11 @@ Manual review expectations:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
+- Done: expanded `report.html` top summary with complete/partial flag, completed/expected counts, avg/fastest/slowest request latency, avg/fastest/slowest image request-latency totals; kept matrix cells tag-only; added print CSS (`@media print`) with sticky reset, compact typography, and print color-adjust for chips.
+- Changed files: `src/report.py`, `tests/test_report.py`, `README.md`, `PROJECT_GUIDE.md`, `specs/20-report-statistics-and-print.md`.
 - Checks run:
-- Notes:
+  - `python -m pytest -q tests/test_report.py`
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
+- Notes: image timing summary is computed from available completed request latencies (diagnostics first, summary fallback), so partial runs are explicit but still report meaningful aggregates.

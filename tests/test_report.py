@@ -407,3 +407,79 @@ def test_diagnostics_html_and_cross_links(tmp_path):
     report_html = build_report(run_dir).read_text(encoding="utf-8")
     assert "diagnostics.html" in report_html
     assert "Back to answer matrix" in diagnostics_html
+
+
+def test_report_top_summary_and_print_css(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    image = run_dir / "img.jpg"
+    image.write_bytes(b"\xff\xd8\xff\xd9")
+    _write_summary(
+        run_dir / "summary.csv",
+        [
+            {
+                "run_id": "run",
+                "request_id": "r1",
+                "model_id": "m",
+                "base_model_id": "b",
+                "model_label": "model-a",
+                "params": "4B",
+                "quant": "Q4",
+                "quant_bits": "4",
+                "image_id": "image-1",
+                "image_path": str(image),
+                "image_rel_path": "img.jpg",
+                "mode": "en_free",
+                "prompt_version": "v2",
+                "response_format_requested": "line_tags",
+                "response_format_used": "line_tags",
+                "accepted_tags": '["cat"]',
+                "accepted_ids": "[]",
+                "rejected_tags": "[]",
+                "rejected_ids": "[]",
+                "tag_count": "1",
+                "pool_violations": "0",
+                "parse_ok": "true",
+                "schema_ok": "true",
+                "json_extracted": "false",
+                "line_fallback_used": "false",
+                "pool_ok": "true",
+                "latency_sec": "1.25",
+                "prompt_tokens": "1",
+                "completion_tokens": "1",
+                "total_tokens": "2",
+                "requested_context_length": "16000",
+                "actual_context_length": "16000",
+                "context_near_limit": "false",
+                "context_overflow": "false",
+                "output_truncated": "false",
+                "gpu_memory_before_mb": "100",
+                "gpu_memory_after_mb": "200",
+                "error_type": "",
+                "error": "",
+            }
+        ],
+    )
+    (run_dir / "diagnostics.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "run": {
+                    "run_id": "run",
+                    "is_partial": True,
+                    "expected_request_count": 3,
+                    "completed_request_count": 1,
+                },
+                "requests": [{"request_id": "r1", "image_id": "image-1", "latency_sec": 1.25}],
+                "models": [],
+                "pools": {},
+                "warnings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    html = build_report(run_dir).read_text(encoding="utf-8")
+    assert "completion: partial" in html
+    assert "completed: 1/3" in html
+    assert "avg req latency" in html
+    assert "@media print" in html
