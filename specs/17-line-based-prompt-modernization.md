@@ -322,7 +322,11 @@ Manual review expectations:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
+- Done: bumped `PROMPT_VERSION` to `v2`; switched active prompts to line-based output (`line_tags` for free/plain, `line_ids` for explained); kept strict JSON schema support; added `message.reasoning_content` fallback when `message.content` is empty; stored output-source diagnostics (`output_source`, `content_empty`, `reasoning_content_used`, content lengths) in normalized output and run diagnostics.
+- Changed files: `src/prompts.py`, `src/runner.py`, `src/report.py`, `config.smoke.yaml`, `config.example.yaml`, `tests/test_prompts.py`, `tests/test_response_parsing.py`, `tests/test_runner.py`, `tests/test_config.py`, `tests/helpers.py`, `README.md`, `PROJECT_GUIDE.md`, `specs/17-line-based-prompt-modernization.md`.
 - Checks run:
-- Notes:
+  - `python -m pytest -q tests/test_prompts.py tests/test_tag_pools.py tests/test_runner.py tests/test_config.py tests/test_response_parsing.py`
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
+- Notes: while applying config updates, legacy Cyrillic absolute paths in YAML became corrupted in the local terminal encoding; replaced `input.image_dir` with portable relative `ImgToTag` in both active configs to keep UTF-8-safe parsing and repo portability.

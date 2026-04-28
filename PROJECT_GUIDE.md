@@ -194,7 +194,8 @@ en_pool_explained
 Правила:
 
 - максимум тегов задается `limits.max_tags`;
-- free/plain modes принимают strict JSON и line fallback;
+- free/plain modes по умолчанию используют `line_tags` (один тег на строку);
+- parser продолжает поддерживать `strict_json` для обратной совместимости и альтернативных конфигов;
 - explained modes ожидают ID тегов;
 - теги вне pool сохраняются в rejected-полях;
 - `pool_validation_failed` в summary означает диагностированное нарушение pool-режима.

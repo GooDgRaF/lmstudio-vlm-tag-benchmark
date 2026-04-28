@@ -411,6 +411,11 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
             f"<td>{_escape(item.get('accepted_tag_count'))}</td>"
             f"<td>{_escape(item.get('rejected_tag_count'))}</td>"
             f"<td>{_escape(item.get('rejected_id_count'))}</td>"
+            f"<td>{_escape(item.get('output_source'))}</td>"
+            f"<td>{_yn(item.get('content_empty'))}</td>"
+            f"<td>{_yn(item.get('reasoning_content_used'))}</td>"
+            f"<td>{_escape(item.get('content_length'))}</td>"
+            f"<td>{_escape(item.get('reasoning_content_length'))}</td>"
             f"<td><a href='{_escape(item.get('raw_path'))}'>raw</a></td>"
             f"<td><a href='{_escape(item.get('normalized_path'))}'>normalized</a></td>"
             "</tr>"
@@ -488,7 +493,7 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
   <div class="wrap"><table><thead><tr><th>model</th><th>params</th><th>quant</th><th>load ok</th><th>load sec</th><th>smoke</th><th>req</th><th>errors</th><th>pool viol</th><th>avg</th><th>median</th><th>min</th><th>max</th><th>parse rate</th><th>schema rate</th><th>pool rate</th><th>ctx req</th><th>ctx actual</th><th>unload ok</th></tr></thead><tbody>{''.join(model_rows)}</tbody></table></div>
 
   <h2>Request diagnostics</h2>
-  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>raw</th><th>normalized</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
+  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>output src</th><th>content empty</th><th>reasoning used</th><th>content len</th><th>reasoning len</th><th>raw</th><th>normalized</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
 
   <h2>Pool diagnostics</h2>
   <div class="wrap"><table><thead><tr><th>pool</th><th>path</th><th>type</th><th>tag count</th><th>entry count</th><th>id prefixes</th><th>sha256</th></tr></thead><tbody>{''.join(pool_rows)}</tbody></table></div>

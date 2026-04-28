@@ -54,6 +54,18 @@ def test_line_fallback_works(tmp_path):
     assert out["accepted_tags"] == ["cat", "dog"]
 
 
+def test_line_tags_parses_as_primary_format(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output="cat\ndog",
+        mode="en_free",
+        requested_response_format="line_tags",
+    )
+    assert out["parse_ok"] is True
+    assert out["accepted_tags"] == ["cat", "dog"]
+    assert out["response_format_used"] == "line_tags"
+
+
 def test_duplicates_removed_order_preserved(tmp_path):
     out = _normalize(
         tmp_path,

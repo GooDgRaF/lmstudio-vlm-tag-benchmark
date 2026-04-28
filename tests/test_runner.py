@@ -7,7 +7,7 @@ import yaml
 from PIL import Image
 
 from src.config import load_config
-from src.runner import _to_data_url, run_benchmark
+from src.runner import _extract_text_from_completion, _to_data_url, run_benchmark
 from tests.helpers import build_config
 
 
@@ -169,3 +169,67 @@ def test_runner_writes_gpu_after_unload_and_model_diag(tmp_path, monkeypatch):
     diagnostics = json.loads((run_dir / "diagnostics.json").read_text(encoding="utf-8"))
     assert diagnostics["schema_version"] == 1
     assert diagnostics["models"][0]["model_label"] == "m1_q4"
+
+
+def test_extract_uses_content_when_present():
+    payload = {"choices": [{"message": {"content": "cat", "reasoning_content": "dog"}}]}
+    out = _extract_text_from_completion(payload)
+    assert out["raw_output"] == "cat"
+    assert out["output_source"] == "content"
+    assert out["content_empty"] is False
+    assert out["reasoning_content_used"] is False
+
+
+def test_extract_falls_back_to_reasoning_content():
+    payload = {"choices": [{"message": {"content": "   ", "reasoning_content": "cat\ndog"}}]}
+    out = _extract_text_from_completion(payload)
+    assert out["raw_output"] == "cat\ndog"
+    assert out["output_source"] == "reasoning_content"
+    assert out["content_empty"] is True
+    assert out["reasoning_content_used"] is True
+
+
+def test_extract_empty_when_both_sources_are_empty():
+    payload = {"choices": [{"message": {"content": "", "reasoning_content": "  "}}]}
+    out = _extract_text_from_completion(payload)
+    assert out["raw_output"] == ""
+    assert out["output_source"] == "empty"
+    assert out["content_empty"] is True
+    assert out["reasoning_content_used"] is False
+
+
+def test_reasoning_fallback_is_saved_in_normalized_and_diagnostics(tmp_path, monkeypatch):
+    class ReasoningOnlyClient(FakeClient):
+        def chat_completion(self, **kwargs):
+            if kwargs.get("max_tokens") == 16:
+                return {"choices": [{"message": {"content": "ok"}}], "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+            return {
+                "choices": [
+                    {
+                        "message": {"content": "", "reasoning_content": "cat\ndog"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            }
+
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = False
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", ReasoningOnlyClient)
+
+    run_dir = run_benchmark(cfg, limit=1)
+    normalized_path = next((run_dir / "normalized").glob("*.json"))
+    normalized = json.loads(normalized_path.read_text(encoding="utf-8"))
+    assert normalized["output_source"] == "reasoning_content"
+    assert normalized["content_empty"] is True
+    assert normalized["reasoning_content_used"] is True
+    assert normalized["accepted_tags"] == ["cat", "dog"]
+
+    diagnostics = json.loads((run_dir / "diagnostics.json").read_text(encoding="utf-8"))
+    req = diagnostics["requests"][0]
+    assert req["output_source"] == "reasoning_content"
+    assert req["reasoning_content_used"] is True

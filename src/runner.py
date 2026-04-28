@@ -68,18 +68,69 @@ def _build_messages(prompt: str, image_path: str) -> list[dict[str, Any]]:
     ]
 
 
-def _extract_text_from_completion(payload: dict[str, Any]) -> str:
+def _extract_text_from_completion(payload: dict[str, Any]) -> dict[str, Any]:
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
-        return ""
+        return {
+            "raw_output": "",
+            "output_source": "empty",
+            "content_empty": True,
+            "reasoning_content_used": False,
+            "content_length": 0,
+            "reasoning_content_length": 0,
+        }
     first = choices[0]
     if not isinstance(first, dict):
-        return ""
+        return {
+            "raw_output": "",
+            "output_source": "empty",
+            "content_empty": True,
+            "reasoning_content_used": False,
+            "content_length": 0,
+            "reasoning_content_length": 0,
+        }
     message = first.get("message")
     if not isinstance(message, dict):
-        return ""
-    content = message.get("content")
-    return str(content) if content is not None else ""
+        return {
+            "raw_output": "",
+            "output_source": "empty",
+            "content_empty": True,
+            "reasoning_content_used": False,
+            "content_length": 0,
+            "reasoning_content_length": 0,
+        }
+    content = "" if message.get("content") is None else str(message.get("content"))
+    reasoning_content = (
+        "" if message.get("reasoning_content") is None else str(message.get("reasoning_content"))
+    )
+    content_stripped = content.strip()
+    reasoning_stripped = reasoning_content.strip()
+    if content_stripped:
+        return {
+            "raw_output": content,
+            "output_source": "content",
+            "content_empty": False,
+            "reasoning_content_used": False,
+            "content_length": len(content),
+            "reasoning_content_length": len(reasoning_content),
+        }
+    if reasoning_stripped:
+        return {
+            "raw_output": reasoning_content,
+            "output_source": "reasoning_content",
+            "content_empty": True,
+            "reasoning_content_used": True,
+            "content_length": len(content),
+            "reasoning_content_length": len(reasoning_content),
+        }
+    return {
+        "raw_output": "",
+        "output_source": "empty",
+        "content_empty": True,
+        "reasoning_content_used": False,
+        "content_length": len(content),
+        "reasoning_content_length": len(reasoning_content),
+    }
 
 
 def _resume_decision(cfg: BenchmarkConfig, normalized_path: Path, mode: str) -> str:
@@ -131,8 +182,8 @@ def _run_smoke_test(
             max_tokens=16,
             response_format=None,
         )
-        text = _extract_text_from_completion(completion)
-        return {"ok": True, "preview": text[:200]}
+        output = _extract_text_from_completion(completion)
+        return {"ok": True, "preview": output["raw_output"][:200], "output_source": output["output_source"]}
     except LMStudioClientError as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -392,6 +443,11 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                         "line_fallback_used": False,
                         "empty_output": True,
                         "raw_output_length": 0,
+                        "output_source": "empty",
+                        "content_empty": True,
+                        "reasoning_content_used": False,
+                        "content_length": 0,
+                        "reasoning_content_length": 0,
                         "raw_path": storage.raw_path(request_id).relative_to(storage.run_dir).as_posix(),
                         "normalized_path": storage.normalized_path(request_id).relative_to(storage.run_dir).as_posix(),
                     }
@@ -399,7 +455,8 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                     continue
 
                 latency = round(time.perf_counter() - start, 4)
-                raw_text = _extract_text_from_completion(completion_payload)
+                output_meta = _extract_text_from_completion(completion_payload)
+                raw_text = str(output_meta["raw_output"])
                 normalized = normalize_model_output(
                     raw_output=raw_text,
                     mode=mode,
@@ -433,6 +490,11 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                         "image_rel_path": image.image_rel_path,
                         "mode": mode,
                         "latency_sec": latency,
+                        "output_source": output_meta["output_source"],
+                        "content_empty": output_meta["content_empty"],
+                        "reasoning_content_used": output_meta["reasoning_content_used"],
+                        "content_length": output_meta["content_length"],
+                        "reasoning_content_length": output_meta["reasoning_content_length"],
                         **usage_diag,
                         "requested_context_length": cfg.load.context_length,
                         "actual_context_length": loaded.actual_context_length,
@@ -445,6 +507,7 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                         "request_id": request_id,
                         "response": completion_payload,
                         "raw_output": raw_text,
+                        "output_source": output_meta["output_source"],
                     },
                 )
                 storage.save_normalized(request_id, normalized)
@@ -528,6 +591,11 @@ def run_benchmark(cfg: BenchmarkConfig, limit: int | None = None) -> Path:
                     "line_fallback_used": bool(normalized.get("line_fallback_used")),
                     "empty_output": len((raw_text or "").strip()) == 0,
                     "raw_output_length": len(raw_text or ""),
+                    "output_source": normalized.get("output_source"),
+                    "content_empty": bool(normalized.get("content_empty")),
+                    "reasoning_content_used": bool(normalized.get("reasoning_content_used")),
+                    "content_length": int(normalized.get("content_length") or 0),
+                    "reasoning_content_length": int(normalized.get("reasoning_content_length") or 0),
                     "raw_path": storage.raw_path(request_id).relative_to(storage.run_dir).as_posix(),
                     "normalized_path": storage.normalized_path(request_id).relative_to(storage.run_dir).as_posix(),
                 }

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -76,8 +76,8 @@ def build_config(base: Path) -> Path:
         },
         "limits": {"max_tags": 10, "timeout_sec": 30, "retries": 1, "limit_images": None},
         "response_formats": {
-            "free_modes": {"primary": "strict_json", "fallback": "line_tags"},
-            "plain_pool_modes": {"primary": "strict_json", "fallback": "line_tags"},
+            "free_modes": {"primary": "line_tags", "fallback": "strict_json"},
+            "plain_pool_modes": {"primary": "line_tags", "fallback": "strict_json"},
             "explained_pool_modes": {"primary": "line_ids", "fallback": None},
         },
         "validation": {
