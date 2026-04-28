@@ -10,6 +10,8 @@ def _write_summary(path, rows):
     headers = [
         "run_id",
         "request_id",
+        "attempt",
+        "status",
         "model_id",
         "base_model_id",
         "model_label",
@@ -47,6 +49,9 @@ def _write_summary(path, rows):
         "gpu_memory_after_mb",
         "error_type",
         "error",
+        "raw_path",
+        "normalized_path",
+        "request_diagnostics_path",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=headers)
@@ -483,3 +488,103 @@ def test_report_top_summary_and_print_css(tmp_path):
     assert "completed: 1/3" in html
     assert "avg req latency" in html
     assert "@media print" in html
+
+
+def test_report_prefers_latest_success_over_failed_attempt(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    image = run_dir / "img.jpg"
+    image.write_bytes(b"\xff\xd8\xff\xd9")
+    _write_summary(
+        run_dir / "summary.csv",
+        [
+            {
+                "run_id": "run",
+                "request_id": "r1",
+                "model_id": "m",
+                "base_model_id": "b",
+                "model_label": "model-a",
+                "params": "4B",
+                "quant": "Q4",
+                "quant_bits": "4",
+                "image_id": "image-1",
+                "image_path": str(image),
+                "image_rel_path": "img.jpg",
+                "mode": "en_free",
+                "prompt_version": "v2",
+                "response_format_requested": "line_tags",
+                "response_format_used": "line_tags",
+                "accepted_tags": '["cat"]',
+                "accepted_ids": "[]",
+                "rejected_tags": "[]",
+                "rejected_ids": "[]",
+                "tag_count": "1",
+                "pool_violations": "0",
+                "parse_ok": "true",
+                "schema_ok": "true",
+                "json_extracted": "false",
+                "line_fallback_used": "false",
+                "pool_ok": "true",
+                "latency_sec": "1.0",
+                "prompt_tokens": "1",
+                "completion_tokens": "1",
+                "total_tokens": "2",
+                "requested_context_length": "16000",
+                "actual_context_length": "16000",
+                "context_near_limit": "false",
+                "context_overflow": "false",
+                "output_truncated": "false",
+                "gpu_memory_before_mb": "100",
+                "gpu_memory_after_mb": "200",
+                "error_type": "",
+                "error": "",
+                "attempt": "1",
+                "status": "success",
+            },
+            {
+                "run_id": "run",
+                "request_id": "r1",
+                "model_id": "m",
+                "base_model_id": "b",
+                "model_label": "model-a",
+                "params": "4B",
+                "quant": "Q4",
+                "quant_bits": "4",
+                "image_id": "image-1",
+                "image_path": str(image),
+                "image_rel_path": "img.jpg",
+                "mode": "en_free",
+                "prompt_version": "v2",
+                "response_format_requested": "line_tags",
+                "response_format_used": "line_tags",
+                "accepted_tags": "[]",
+                "accepted_ids": "[]",
+                "rejected_tags": "[]",
+                "rejected_ids": "[]",
+                "tag_count": "0",
+                "pool_violations": "0",
+                "parse_ok": "false",
+                "schema_ok": "false",
+                "json_extracted": "false",
+                "line_fallback_used": "false",
+                "pool_ok": "true",
+                "latency_sec": "1.2",
+                "prompt_tokens": "1",
+                "completion_tokens": "1",
+                "total_tokens": "2",
+                "requested_context_length": "16000",
+                "actual_context_length": "16000",
+                "context_near_limit": "false",
+                "context_overflow": "false",
+                "output_truncated": "false",
+                "gpu_memory_before_mb": "100",
+                "gpu_memory_after_mb": "200",
+                "error_type": "request_error",
+                "error": "boom",
+                "attempt": "2",
+                "status": "failed",
+            },
+        ],
+    )
+    html = build_report(run_dir).read_text(encoding="utf-8")
+    assert "cat" in html

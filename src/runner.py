@@ -276,6 +276,7 @@ def run_benchmark(
     run_id: str | None = None,
     force_lock: bool = False,
 ) -> Path:
+    is_accumulate = cfg.runtime.result_mode == "accumulate"
     pools = load_tag_pools(cfg)
     images = discover_images(cfg, limit=limit)
     run_id, storage = create_run_storage(cfg, run_id=run_id)
@@ -417,6 +418,7 @@ def run_benchmark(
                     if decision == "skip":
                         skipped_count += 1
                         continue
+                    attempt_no = storage.next_attempt_number(req["request_id"]) if is_accumulate else 1
                     req_started = now_timestamp()
                     fail_status = _request_status_payload(
                         request=req,
@@ -427,9 +429,15 @@ def run_benchmark(
                         error_type=error_type,
                         error=str(exc),
                     )
-                    storage.save_request_status(req["request_id"], fail_status)
-                    storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
-                    storage.save_request_normalized(
+                    fail_status["attempt"] = attempt_no
+                    if is_accumulate:
+                        storage.save_attempt_status(req["request_id"], attempt_no, fail_status)
+                        storage.save_attempt_raw(req["request_id"], attempt_no, {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                    else:
+                        storage.save_request_status(req["request_id"], fail_status)
+                        storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
+
+                    normalized_payload = (
                         req["request_id"],
                         {
                             "prompt_version": req["prompt_version"],
@@ -462,15 +470,19 @@ def run_benchmark(
                             "latency_sec": 0.0,
                         },
                     )
-                    storage.save_request_diagnostics(
-                        req["request_id"],
-                        {
-                            "request_id": req["request_id"],
-                            "status": "failed",
-                            "error_type": error_type,
-                            "error": str(exc),
-                        },
-                    )
+                    if is_accumulate:
+                        storage.save_attempt_normalized(req["request_id"], attempt_no, normalized_payload[1])
+                        storage.save_attempt_diagnostics(
+                            req["request_id"],
+                            attempt_no,
+                            {"request_id": req["request_id"], "status": "failed", "error_type": error_type, "error": str(exc)},
+                        )
+                    else:
+                        storage.save_request_normalized(*normalized_payload)
+                        storage.save_request_diagnostics(
+                            req["request_id"],
+                            {"request_id": req["request_id"], "status": "failed", "error_type": error_type, "error": str(exc)},
+                        )
                     failed_count += 1
                     completed_count += 1
                     save_state("running", req)
@@ -510,27 +522,35 @@ def run_benchmark(
                         error_type=None,
                         error=None,
                     )
-                    storage.save_request_status(req["request_id"], skip_status)
+                    if is_accumulate:
+                        attempt_no = storage.next_attempt_number(req["request_id"])
+                        skip_status["attempt"] = attempt_no
+                        storage.save_attempt_status(req["request_id"], attempt_no, skip_status)
+                    else:
+                        storage.save_request_status(req["request_id"], skip_status)
                     skipped_count += 1
                     continue
 
                 mode = req["mode"]
                 image_path = req["image_path"]
                 prompt = build_prompt(cfg, mode, pools)
+                attempt_no = storage.next_attempt_number(req["request_id"]) if is_accumulate else 1
 
                 req_start_ts = now_timestamp()
-                storage.save_request_status(
-                    req["request_id"],
-                    _request_status_payload(
-                        request=req,
-                        status="running",
-                        started_at=req_start_ts,
-                        finished_at=None,
-                        duration_sec=None,
-                        error_type=None,
-                        error=None,
-                    ),
+                running_status = _request_status_payload(
+                    request=req,
+                    status="running",
+                    started_at=req_start_ts,
+                    finished_at=None,
+                    duration_sec=None,
+                    error_type=None,
+                    error=None,
                 )
+                running_status["attempt"] = attempt_no
+                if is_accumulate:
+                    storage.save_attempt_status(req["request_id"], attempt_no, running_status)
+                else:
+                    storage.save_request_status(req["request_id"], running_status)
 
                 response_format_payload = None
                 if cfg.validation.use_response_format:
@@ -596,23 +616,31 @@ def run_benchmark(
                         "mode": mode,
                         "latency_sec": latency,
                     }
-                    storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
-                    storage.save_request_normalized(req["request_id"], normalized)
-                    storage.save_request_diagnostics(req["request_id"], {"request_id": req["request_id"], "status": "failed", "error_type": "request_error", "error": str(exc)})
-                    storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
-                    storage.save_normalized(req["request_id"], normalized)
-                    storage.save_request_status(
-                        req["request_id"],
-                        _request_status_payload(
-                            request=req,
-                            status="failed",
-                            started_at=req_start_ts,
-                            finished_at=now_timestamp(),
-                            duration_sec=latency,
-                            error_type="request_error",
-                            error=str(exc),
-                        ),
+                    if is_accumulate:
+                        storage.save_attempt_raw(req["request_id"], attempt_no, {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_attempt_normalized(req["request_id"], attempt_no, normalized)
+                        storage.save_attempt_diagnostics(req["request_id"], attempt_no, {"request_id": req["request_id"], "status": "failed", "error_type": "request_error", "error": str(exc)})
+                    else:
+                        storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_request_normalized(req["request_id"], normalized)
+                        storage.save_request_diagnostics(req["request_id"], {"request_id": req["request_id"], "status": "failed", "error_type": "request_error", "error": str(exc)})
+                        storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_normalized(req["request_id"], normalized)
+
+                    failed_status = _request_status_payload(
+                        request=req,
+                        status="failed",
+                        started_at=req_start_ts,
+                        finished_at=now_timestamp(),
+                        duration_sec=latency,
+                        error_type="request_error",
+                        error=str(exc),
                     )
+                    failed_status["attempt"] = attempt_no
+                    if is_accumulate:
+                        storage.save_attempt_status(req["request_id"], attempt_no, failed_status)
+                    else:
+                        storage.save_request_status(req["request_id"], failed_status)
                     failed_count += 1
                     completed_count += 1
                     continue
@@ -709,17 +737,22 @@ def run_benchmark(
                     "normalized_path": storage.normalized_path(req["request_id"]).relative_to(storage.run_dir).as_posix(),
                 }
 
-                storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text})
-                storage.save_request_normalized(req["request_id"], normalized)
-                storage.save_request_diagnostics(req["request_id"], request_diag)
-                storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text, "output_source": output_meta["output_source"]})
-                storage.save_normalized(req["request_id"], normalized)
+                if is_accumulate:
+                    storage.save_attempt_raw(req["request_id"], attempt_no, {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text})
+                    storage.save_attempt_normalized(req["request_id"], attempt_no, normalized)
+                    storage.save_attempt_diagnostics(req["request_id"], attempt_no, request_diag)
+                else:
+                    storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text})
+                    storage.save_request_normalized(req["request_id"], normalized)
+                    storage.save_request_diagnostics(req["request_id"], request_diag)
+                    storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text, "output_source": output_meta["output_source"]})
+                    storage.save_normalized(req["request_id"], normalized)
 
                 storage.append_summary_row(
                     {
                         "run_id": run_id,
                         "request_id": req["request_id"],
-                        "attempt": 1,
+                        "attempt": attempt_no,
                         "status": "success" if not normalized.get("error_type") else "failed",
                         "model_id": model.id,
                         "base_model_id": model.base_model_id,
@@ -758,25 +791,39 @@ def run_benchmark(
                         "gpu_memory_after_mb": gpu_after.get("memory_used_mb"),
                         "error_type": normalized["error_type"],
                         "error": normalized["error"],
-                        "raw_path": storage.request_path(req["request_id"], "raw").relative_to(storage.run_dir).as_posix(),
-                        "normalized_path": storage.request_path(req["request_id"], "normalized").relative_to(storage.run_dir).as_posix(),
-                        "request_diagnostics_path": storage.request_path(req["request_id"], "diagnostics").relative_to(storage.run_dir).as_posix(),
+                        "raw_path": (
+                            storage.attempt_path(req["request_id"], attempt_no, "raw").relative_to(storage.run_dir).as_posix()
+                            if is_accumulate
+                            else storage.request_path(req["request_id"], "raw").relative_to(storage.run_dir).as_posix()
+                        ),
+                        "normalized_path": (
+                            storage.attempt_path(req["request_id"], attempt_no, "normalized").relative_to(storage.run_dir).as_posix()
+                            if is_accumulate
+                            else storage.request_path(req["request_id"], "normalized").relative_to(storage.run_dir).as_posix()
+                        ),
+                        "request_diagnostics_path": (
+                            storage.attempt_path(req["request_id"], attempt_no, "diagnostics").relative_to(storage.run_dir).as_posix()
+                            if is_accumulate
+                            else storage.request_path(req["request_id"], "diagnostics").relative_to(storage.run_dir).as_posix()
+                        ),
                     }
                 )
 
                 final_status = "failed" if normalized.get("error_type") else "success"
-                storage.save_request_status(
-                    req["request_id"],
-                    _request_status_payload(
-                        request=req,
-                        status=final_status,
-                        started_at=req_start_ts,
-                        finished_at=now_timestamp(),
-                        duration_sec=latency,
-                        error_type=normalized.get("error_type"),
-                        error=normalized.get("error"),
-                    ),
+                final_status_payload = _request_status_payload(
+                    request=req,
+                    status=final_status,
+                    started_at=req_start_ts,
+                    finished_at=now_timestamp(),
+                    duration_sec=latency,
+                    error_type=normalized.get("error_type"),
+                    error=normalized.get("error"),
                 )
+                final_status_payload["attempt"] = attempt_no
+                if is_accumulate:
+                    storage.save_attempt_status(req["request_id"], attempt_no, final_status_payload)
+                else:
+                    storage.save_request_status(req["request_id"], final_status_payload)
                 if final_status == "failed":
                     failed_count += 1
                 completed_count += 1

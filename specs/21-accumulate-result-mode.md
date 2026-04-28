@@ -257,7 +257,11 @@ results/accumulate-smoke/diagnostics.html
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
+- Done: implemented `runtime.result_mode: accumulate` as append-only attempts per logical request (`attempts/001..N`), including attempt status/raw/normalized/diagnostics artifacts; updated collect to emit one `summary.csv` row per attempt with `attempt/status`; added run diagnostics attempt counters; updated report selection to prefer latest successful attempt (fallback to latest failed) while keeping answer cells tag-only.
+- Changed files: `src/storage.py`, `src/runner.py`, `src/collect.py`, `src/report.py`, `tests/test_collect.py`, `tests/test_report.py`, `README.md`, `PROJECT_GUIDE.md`, `specs/21-accumulate-result-mode.md`.
 - Checks run:
-- Notes:
+  - `python -m pytest -q tests/test_collect.py tests/test_report.py tests/test_runner.py`
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
+- Notes: deterministic/overwrite behavior remains supported; accumulate mode avoids writing canonical per-request status/raw/normalized/diagnostics files and stores attempt artifacts only under `attempts/`.

@@ -122,6 +122,12 @@ results/<run_id>/
 После введения request-artifacts источником истины являются `requests/<request_id>/*`.  
 `summary.csv`, `diagnostics.json`, `report.html` и `diagnostics.html` — производные файлы, которые можно пересобрать через `collect/report`.
 
+Режимы результата:
+
+- `runtime.result_mode: deterministic` — один каноничный результат на logical request;
+- `runtime.result_mode: overwrite` — принудительный пересчет каноничных файлов;
+- `runtime.result_mode: accumulate` — append-only попытки в `requests/<request_id>/attempts/NNN/`.
+
 ## Ограничения v1
 
 Проект остается простым CLI benchmark. В v1 не входят GUI, web-server, SQLite, async runner, judge-модель, plugin-system и поддержка backend-ов кроме LM Studio.

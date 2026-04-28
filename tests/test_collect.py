@@ -115,3 +115,26 @@ def test_ensure_collected_rebuilds_when_missing(tmp_path):
     ensure_collected(run_dir)
     assert (run_dir / "summary.csv").exists()
     assert (run_dir / "diagnostics.json").exists()
+
+
+def test_collect_accumulate_includes_multiple_attempts(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    manifest["result_mode"] = "accumulate"
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    req_dir = run_dir / "requests" / "req1"
+    (req_dir / "status.json").unlink(missing_ok=True)
+    (req_dir / "normalized.json").unlink(missing_ok=True)
+    (req_dir / "diagnostics.json").unlink(missing_ok=True)
+    a1 = req_dir / "attempts" / "001"
+    a2 = req_dir / "attempts" / "002"
+    _write_json(a1 / "status.json", {"status": "failed", "attempt": 1, "error_type": "request_error"})
+    _write_json(a1 / "normalized.json", {"accepted_tags": [], "rejected_tags": [], "rejected_ids": [], "accepted_ids": [], "pool_ok": True, "pool_violations": 0, "parse_ok": False, "schema_ok": False, "json_extracted": False, "line_fallback_used": False, "error_type": "request_error"})
+    _write_json(a2 / "status.json", {"status": "success", "attempt": 2})
+    _write_json(a2 / "normalized.json", {"accepted_tags": ["cat"], "rejected_tags": [], "rejected_ids": [], "accepted_ids": [], "pool_ok": True, "pool_violations": 0, "parse_ok": True, "schema_ok": True, "json_extracted": False, "line_fallback_used": False, "error_type": None})
+    result = collect_run(run_dir)
+    summary = result["summary_path"].read_text(encoding="utf-8-sig")
+    assert summary.count("req1") >= 2
+    diagnostics = json.loads(result["diagnostics_path"].read_text(encoding="utf-8"))
+    assert diagnostics["run"]["attempt_count"] == 2
+    assert diagnostics["run"]["successful_attempt_count"] == 1

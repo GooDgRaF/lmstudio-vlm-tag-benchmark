@@ -244,6 +244,12 @@ results/<run_id>/
 Источник истины: `requests/<request_id>/*` + `models/*` + `run_manifest.json`.  
 `summary.csv`, `diagnostics.json`, `report.html`, `diagnostics.html` считаются производными и могут быть пересобраны.
 
+Для повторных прогонов в тот же `run_id`:
+
+- `result_mode: deterministic` переиспользует успешные запросы;
+- `result_mode: overwrite` пересчитывает каноничные результаты;
+- `result_mode: accumulate` добавляет новую попытку в `requests/<request_id>/attempts/NNN/` и сохраняет историю.
+
 ## Код
 
 ```text

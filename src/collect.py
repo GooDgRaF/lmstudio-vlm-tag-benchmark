@@ -75,6 +75,11 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
     completed = 0
     failed = 0
     incomplete = 0
+    attempt_count = 0
+    successful_attempt_count = 0
+    failed_attempt_count = 0
+    running_or_incomplete_attempt_count = 0
+    result_mode = str(manifest.get("result_mode") or "deterministic")
 
     for req in requests:
         if not isinstance(req, dict):
@@ -84,146 +89,193 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             continue
         request_id = str(req.get("request_id") or "")
         request_dir = run_dir / "requests" / request_id
+        model_label = str(req.get("model_label") or "")
+        model_info = model_map.get(model_label, {})
+
+        def append_attempt(
+            *,
+            attempt_no: int,
+            status: dict[str, Any],
+            normalized: dict[str, Any] | None,
+            req_diag: dict[str, Any] | None,
+            base_prefix: str,
+        ) -> None:
+            nonlocal attempt_count, successful_attempt_count, failed_attempt_count
+            attempt_count += 1
+            status_name = str(status.get("status") or "")
+            if status_name == "success":
+                successful_attempt_count += 1
+            elif status_name == "failed":
+                failed_attempt_count += 1
+            row_base = {
+                "run_id": manifest.get("run_id"),
+                "request_id": request_id,
+                "attempt": attempt_no,
+                "status": status_name or "unknown",
+                "model_id": req.get("model_id"),
+                "base_model_id": req.get("base_model_id") or model_info.get("base_model_id"),
+                "model_label": model_label,
+                "params": model_info.get("params"),
+                "quant": model_info.get("quant"),
+                "quant_bits": model_info.get("quant_bits"),
+                "image_id": req.get("image_id"),
+                "image_path": req.get("image_path"),
+                "image_rel_path": req.get("image_rel_path"),
+                "mode": req.get("mode"),
+                "prompt_version": req.get("prompt_version"),
+                "response_format_requested": req.get("response_format_requested"),
+            }
+            if normalized is None:
+                normalized = {
+                    "response_format_used": req.get("response_format_requested"),
+                    "accepted_tags": [],
+                    "accepted_ids": [],
+                    "rejected_tags": [],
+                    "rejected_ids": [],
+                    "pool_violations": 0,
+                    "parse_ok": False,
+                    "schema_ok": False,
+                    "json_extracted": False,
+                    "line_fallback_used": False,
+                    "pool_ok": False if str(req.get("mode") or "").endswith("_pool") else True,
+                    "latency_sec": status.get("duration_sec"),
+                    "error_type": status.get("error_type"),
+                    "error": status.get("error"),
+                }
+                if strict:
+                    raise RuntimeError(f"Missing normalized.json for {request_id}")
+            summary_rows.append(
+                {
+                    **row_base,
+                    "response_format_used": normalized.get("response_format_used"),
+                    "accepted_tags": normalized.get("accepted_tags") or [],
+                    "accepted_ids": normalized.get("accepted_ids") or [],
+                    "rejected_tags": normalized.get("rejected_tags") or [],
+                    "rejected_ids": normalized.get("rejected_ids") or [],
+                    "tag_count": len(normalized.get("accepted_tags") or []),
+                    "pool_violations": normalized.get("pool_violations") or 0,
+                    "parse_ok": bool(normalized.get("parse_ok")),
+                    "schema_ok": bool(normalized.get("schema_ok")),
+                    "json_extracted": bool(normalized.get("json_extracted")),
+                    "line_fallback_used": bool(normalized.get("line_fallback_used")),
+                    "pool_ok": bool(normalized.get("pool_ok")),
+                    "latency_sec": normalized.get("latency_sec"),
+                    "prompt_tokens": normalized.get("prompt_tokens"),
+                    "completion_tokens": normalized.get("completion_tokens"),
+                    "total_tokens": normalized.get("total_tokens"),
+                    "requested_context_length": normalized.get("requested_context_length"),
+                    "actual_context_length": normalized.get("actual_context_length"),
+                    "context_near_limit": normalized.get("context_near_limit"),
+                    "context_overflow": normalized.get("context_overflow"),
+                    "output_truncated": normalized.get("output_truncated"),
+                    "gpu_memory_before_mb": None,
+                    "gpu_memory_after_mb": None,
+                    "error_type": normalized.get("error_type") or status.get("error_type"),
+                    "error": normalized.get("error") or status.get("error"),
+                    "raw_path": f"{base_prefix}/raw.json",
+                    "normalized_path": f"{base_prefix}/normalized.json",
+                    "request_diagnostics_path": f"{base_prefix}/diagnostics.json",
+                }
+            )
+            if req_diag is None:
+                req_diag = {
+                    "request_id": request_id,
+                    "attempt": attempt_no,
+                    "status": status_name or "unknown",
+                    "model_label": model_label,
+                    "model_id": req.get("model_id"),
+                    "image_id": req.get("image_id"),
+                    "image_rel_path": req.get("image_rel_path"),
+                    "mode": req.get("mode"),
+                    "latency_sec": normalized.get("latency_sec"),
+                    "response_format_requested": req.get("response_format_requested"),
+                    "response_format_used": normalized.get("response_format_used"),
+                    "parse_ok": bool(normalized.get("parse_ok")),
+                    "schema_ok": bool(normalized.get("schema_ok")),
+                    "pool_ok": bool(normalized.get("pool_ok")),
+                    "pool_violations": int(normalized.get("pool_violations") or 0),
+                    "error_type": normalized.get("error_type"),
+                    "error": normalized.get("error"),
+                    "accepted_tag_count": len(normalized.get("accepted_tags") or []),
+                    "rejected_tag_count": len(normalized.get("rejected_tags") or []),
+                    "rejected_id_count": len(normalized.get("rejected_ids") or []),
+                    "raw_path": f"{base_prefix}/raw.json",
+                    "normalized_path": f"{base_prefix}/normalized.json",
+                }
+            request_rows.append(req_diag)
+
+        if result_mode == "accumulate":
+            attempts_root = request_dir / "attempts"
+            attempt_dirs = sorted(
+                [p for p in attempts_root.iterdir() if p.is_dir()],
+                key=lambda p: int(p.name) if p.name.isdigit() else 999999,
+            ) if attempts_root.exists() else []
+            if not attempt_dirs:
+                incomplete += 1
+                warnings.append({"type": "incomplete_request", "request_id": request_id, "model_label": req.get("model_label"), "image_id": req.get("image_id"), "mode": req.get("mode")})
+                continue
+            req_has_terminal = False
+            for adir in attempt_dirs:
+                attempt_no = int(adir.name) if adir.name.isdigit() else 0
+                status = _load_json(adir / "status.json")
+                normalized = _load_json(adir / "normalized.json")
+                req_diag = _load_json(adir / "diagnostics.json")
+                if status is None:
+                    running_or_incomplete_attempt_count += 1
+                    warnings.append({"type": "incomplete_attempt", "request_id": request_id, "attempt": attempt_no})
+                    if strict:
+                        raise RuntimeError(f"Missing attempt status for {request_id}/{attempt_no}")
+                    continue
+                status_name = str(status.get("status") or "")
+                if status_name == "running":
+                    running_or_incomplete_attempt_count += 1
+                    warnings.append({"type": "incomplete_attempt", "request_id": request_id, "attempt": attempt_no})
+                    if strict:
+                        raise RuntimeError(f"Attempt still running: {request_id}/{attempt_no}")
+                    continue
+                req_has_terminal = True
+                append_attempt(
+                    attempt_no=attempt_no or int(status.get("attempt") or 1),
+                    status=status,
+                    normalized=normalized,
+                    req_diag=req_diag,
+                    base_prefix=f"requests/{request_id}/attempts/{attempt_no:03d}",
+                )
+            if req_has_terminal:
+                completed += 1
+            else:
+                incomplete += 1
+            continue
+
         status = _load_json(request_dir / "status.json")
         normalized = _load_json(request_dir / "normalized.json")
         req_diag = _load_json(request_dir / "diagnostics.json")
-
         if status is None:
             incomplete += 1
-            warnings.append(
-                {
-                    "type": "incomplete_request",
-                    "request_id": request_id,
-                    "model_label": req.get("model_label"),
-                    "image_id": req.get("image_id"),
-                    "mode": req.get("mode"),
-                }
-            )
+            warnings.append({"type": "incomplete_request", "request_id": request_id, "model_label": req.get("model_label"), "image_id": req.get("image_id"), "mode": req.get("mode")})
             if strict:
                 raise RuntimeError(f"Missing status artifact for {request_id}")
             continue
-
         status_name = str(status.get("status") or "")
         if status_name == "running":
             incomplete += 1
-            warnings.append(
-                {
-                    "type": "incomplete_request",
-                    "request_id": request_id,
-                    "model_label": req.get("model_label"),
-                    "image_id": req.get("image_id"),
-                    "mode": req.get("mode"),
-                }
-            )
+            running_or_incomplete_attempt_count += 1
+            warnings.append({"type": "incomplete_request", "request_id": request_id, "model_label": req.get("model_label"), "image_id": req.get("image_id"), "mode": req.get("mode")})
             if strict:
                 raise RuntimeError(f"Request still running: {request_id}")
             continue
-
         completed += 1
         if status_name == "failed":
             failed += 1
             if strict:
                 raise RuntimeError(f"Request failed in strict mode: {request_id}")
-
-        model_label = str(req.get("model_label") or "")
-        model_info = model_map.get(model_label, {})
-
-        row_base = {
-            "run_id": manifest.get("run_id"),
-            "request_id": request_id,
-            "attempt": int(status.get("attempt") or 1),
-            "status": status_name or "unknown",
-            "model_id": req.get("model_id"),
-            "base_model_id": req.get("base_model_id") or model_info.get("base_model_id"),
-            "model_label": model_label,
-            "params": model_info.get("params"),
-            "quant": model_info.get("quant"),
-            "quant_bits": model_info.get("quant_bits"),
-            "image_id": req.get("image_id"),
-            "image_path": req.get("image_path"),
-            "image_rel_path": req.get("image_rel_path"),
-            "mode": req.get("mode"),
-            "prompt_version": req.get("prompt_version"),
-            "response_format_requested": req.get("response_format_requested"),
-        }
-        if normalized is None:
-            normalized = {
-                "response_format_used": req.get("response_format_requested"),
-                "accepted_tags": [],
-                "accepted_ids": [],
-                "rejected_tags": [],
-                "rejected_ids": [],
-                "pool_violations": 0,
-                "parse_ok": False,
-                "schema_ok": False,
-                "json_extracted": False,
-                "line_fallback_used": False,
-                "pool_ok": False if str(req.get("mode") or "").endswith("_pool") else True,
-                "latency_sec": status.get("duration_sec"),
-                "error_type": status.get("error_type"),
-                "error": status.get("error"),
-            }
-            if strict:
-                raise RuntimeError(f"Missing normalized.json for {request_id}")
-
-        summary_rows.append(
-            {
-                **row_base,
-                "response_format_used": normalized.get("response_format_used"),
-                "accepted_tags": normalized.get("accepted_tags") or [],
-                "accepted_ids": normalized.get("accepted_ids") or [],
-                "rejected_tags": normalized.get("rejected_tags") or [],
-                "rejected_ids": normalized.get("rejected_ids") or [],
-                "tag_count": len(normalized.get("accepted_tags") or []),
-                "pool_violations": normalized.get("pool_violations") or 0,
-                "parse_ok": bool(normalized.get("parse_ok")),
-                "schema_ok": bool(normalized.get("schema_ok")),
-                "json_extracted": bool(normalized.get("json_extracted")),
-                "line_fallback_used": bool(normalized.get("line_fallback_used")),
-                "pool_ok": bool(normalized.get("pool_ok")),
-                "latency_sec": normalized.get("latency_sec"),
-                "prompt_tokens": normalized.get("prompt_tokens"),
-                "completion_tokens": normalized.get("completion_tokens"),
-                "total_tokens": normalized.get("total_tokens"),
-                "requested_context_length": normalized.get("requested_context_length"),
-                "actual_context_length": normalized.get("actual_context_length"),
-                "context_near_limit": normalized.get("context_near_limit"),
-                "context_overflow": normalized.get("context_overflow"),
-                "output_truncated": normalized.get("output_truncated"),
-                "gpu_memory_before_mb": None,
-                "gpu_memory_after_mb": None,
-                "error_type": normalized.get("error_type") or status.get("error_type"),
-                "error": normalized.get("error") or status.get("error"),
-                "raw_path": f"requests/{request_id}/raw.json",
-                "normalized_path": f"requests/{request_id}/normalized.json",
-                "request_diagnostics_path": f"requests/{request_id}/diagnostics.json",
-            }
+        append_attempt(
+            attempt_no=int(status.get("attempt") or 1),
+            status=status,
+            normalized=normalized,
+            req_diag=req_diag,
+            base_prefix=f"requests/{request_id}",
         )
-
-        if req_diag is None:
-            req_diag = {
-                "request_id": request_id,
-                "model_label": model_label,
-                "model_id": req.get("model_id"),
-                "image_id": req.get("image_id"),
-                "image_rel_path": req.get("image_rel_path"),
-                "mode": req.get("mode"),
-                "latency_sec": normalized.get("latency_sec"),
-                "response_format_requested": req.get("response_format_requested"),
-                "response_format_used": normalized.get("response_format_used"),
-                "parse_ok": bool(normalized.get("parse_ok")),
-                "schema_ok": bool(normalized.get("schema_ok")),
-                "pool_ok": bool(normalized.get("pool_ok")),
-                "pool_violations": int(normalized.get("pool_violations") or 0),
-                "error_type": normalized.get("error_type"),
-                "error": normalized.get("error"),
-                "accepted_tag_count": len(normalized.get("accepted_tags") or []),
-                "rejected_tag_count": len(normalized.get("rejected_tags") or []),
-                "rejected_id_count": len(normalized.get("rejected_ids") or []),
-                "raw_path": f"requests/{request_id}/raw.json",
-                "normalized_path": f"requests/{request_id}/normalized.json",
-            }
-        request_rows.append(req_diag)
 
     summary_path = run_dir / "summary.csv"
     with summary_path.open("w", encoding="utf-8-sig", newline="") as fh:
@@ -262,11 +314,16 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             "pool_violation_count": sum(int(r.get("pool_violations") or 0) for r in request_rows),
             "python_version": prior_run.get("python_version"),
             "git_commit": detect_git_commit(),
+            "result_mode": result_mode,
             "is_partial": not run_complete,
             "expected_request_count": expected,
             "completed_request_count": completed,
             "failed_request_count": failed,
             "running_or_incomplete_request_count": incomplete,
+            "attempt_count": attempt_count,
+            "successful_attempt_count": successful_attempt_count,
+            "failed_attempt_count": failed_attempt_count,
+            "running_or_incomplete_attempt_count": running_or_incomplete_attempt_count,
         },
         "pools": run_config.get("pools") if isinstance(run_config, dict) else {},
         "models": run_config.get("models") if isinstance(run_config, dict) else [],

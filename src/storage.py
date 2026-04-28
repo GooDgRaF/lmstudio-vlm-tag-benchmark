@@ -161,6 +161,44 @@ class RunStorage:
     def request_path(self, request_id: str, name: str) -> Path:
         return self.request_dir(request_id) / f"{name}.json"
 
+    def attempts_dir(self, request_id: str) -> Path:
+        path = self.request_dir(request_id) / "attempts"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def next_attempt_number(self, request_id: str) -> int:
+        attempts = self.attempts_dir(request_id)
+        max_num = 0
+        for child in attempts.iterdir():
+            if not child.is_dir():
+                continue
+            try:
+                num = int(child.name)
+            except ValueError:
+                continue
+            max_num = max(max_num, num)
+        return max_num + 1
+
+    def attempt_dir(self, request_id: str, attempt: int) -> Path:
+        path = self.attempts_dir(request_id) / f"{attempt:03d}"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def attempt_path(self, request_id: str, attempt: int, name: str) -> Path:
+        return self.attempt_dir(request_id, attempt) / f"{name}.json"
+
+    def save_attempt_status(self, request_id: str, attempt: int, payload: dict[str, Any]) -> Path:
+        return self._atomic_write_json(self.attempt_path(request_id, attempt, "status"), payload)
+
+    def save_attempt_raw(self, request_id: str, attempt: int, payload: dict[str, Any]) -> Path:
+        return self._atomic_write_json(self.attempt_path(request_id, attempt, "raw"), payload)
+
+    def save_attempt_normalized(self, request_id: str, attempt: int, payload: dict[str, Any]) -> Path:
+        return self._atomic_write_json(self.attempt_path(request_id, attempt, "normalized"), payload)
+
+    def save_attempt_diagnostics(self, request_id: str, attempt: int, payload: dict[str, Any]) -> Path:
+        return self._atomic_write_json(self.attempt_path(request_id, attempt, "diagnostics"), payload)
+
     def save_request_descriptor(self, request_id: str, payload: dict[str, Any]) -> Path:
         return self._atomic_write_json(self.request_path(request_id, "request"), payload)
 

@@ -137,6 +137,16 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     return f"<div class='chips'>{''.join(chips)}</div>"
 
 
+def _cell_rank(cell: dict[str, Any]) -> tuple[int, int]:
+    status = str(cell.get("status") or "")
+    attempt = _to_int(cell.get("attempt"), default=0)
+    if status == "success":
+        return (2, attempt)
+    if status == "failed":
+        return (1, attempt)
+    return (0, attempt)
+
+
 def _to_float(value: Any) -> float | None:
     try:
         x = float(value)
@@ -205,16 +215,21 @@ def build_report(run_dir: Path) -> Path:
             }
 
         key = (image_id, mode, model)
-        if key in matrix:
-            duplicates += 1
-
-        matrix[key] = {
+        curr = {
             "accepted_tags": _parse_json_cell(row.get("accepted_tags")),
             "rejected_tags": _parse_json_cell(row.get("rejected_tags")),
             "rejected_ids": _parse_json_cell(row.get("rejected_ids")),
             "error_type": row.get("error_type") or "",
             "error": row.get("error") or "",
+            "status": row.get("status") or "",
+            "attempt": row.get("attempt") or 0,
         }
+        if key in matrix:
+            duplicates += 1
+            prev = matrix[key]
+            matrix[key] = curr if _cell_rank(curr) >= _cell_rank(prev) else prev
+        else:
+            matrix[key] = curr
 
     top_mode_sequence = list(dict.fromkeys(mode_order + [r.get("mode", "") for r in rows if r.get("mode")]))
 
