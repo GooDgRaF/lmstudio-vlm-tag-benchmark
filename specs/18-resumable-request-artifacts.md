@@ -373,7 +373,11 @@ Manual interruption check:
 
 Fill this after implementation:
 
-- Done:
-- Changed files:
+- Done: added deterministic resumable request artifacts with atomic writes (`requests/<request_id>/request|status|raw|normalized|diagnostics.json`), run manifest/state/complete files, lock handling with `--force-lock`, and `run --run-id <id>` flow. Added runtime config contract (`result_mode`, `resume`, `retry_failed`) and switched runner decisions to status-based resume logic. Model-load failures now produce per-request failed status/artifacts.
+- Changed files: `src/config.py`, `src/validator.py`, `src/storage.py`, `src/runner.py`, `main.py`, `config.smoke.yaml`, `config.example.yaml`, `tests/helpers.py`, `tests/test_storage.py`, `tests/test_runner.py`, `tests/test_resume.py`, `tests/test_config.py`, `README.md`, `PROJECT_GUIDE.md`, `specs/18-resumable-request-artifacts.md`.
 - Checks run:
-- Notes:
+  - `python -m pytest -q tests/test_storage.py tests/test_resume.py tests/test_runner.py tests/test_config.py`
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
+- Notes: kept legacy top-level `raw/` and `normalized/` outputs for backward compatibility while introducing canonical per-request artifacts under `requests/`.

@@ -117,10 +117,10 @@ class DiagnosticsConfig:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
+    result_mode: str
     unload_model_after_run: bool
     resume: bool
-    skip_existing_success: bool
-    retry_existing_errors: bool
+    retry_failed: bool
     sleep_after_load_sec: float
     image_request_smoke_test: bool
 
@@ -322,10 +322,10 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
             ),
         ),
         runtime=RuntimeConfig(
+            result_mode=str(runtime_raw.get("result_mode", "deterministic")),
             unload_model_after_run=bool(runtime_raw.get("unload_model_after_run", True)),
             resume=bool(runtime_raw.get("resume", True)),
-            skip_existing_success=bool(runtime_raw.get("skip_existing_success", True)),
-            retry_existing_errors=bool(runtime_raw.get("retry_existing_errors", True)),
+            retry_failed=bool(runtime_raw.get("retry_failed", True)),
             sleep_after_load_sec=float(runtime_raw.get("sleep_after_load_sec", 2)),
             image_request_smoke_test=bool(runtime_raw.get("image_request_smoke_test", True)),
         ),
@@ -339,4 +339,3 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
         raw=loaded,
     )
     return cfg
-

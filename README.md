@@ -34,6 +34,8 @@ results/<run_id>/report.html
 python main.py validate-config --config config.smoke.yaml
 python main.py dry-run --config config.smoke.yaml
 python main.py run --config config.smoke.yaml
+python main.py run --config config.smoke.yaml --run-id smoke-001
+python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
 python main.py report --run results/<run_id>
 ```
 
@@ -98,6 +100,10 @@ results/<run_id>/
   summary.csv
   report.html
   errors.log
+  run_manifest.json
+  run_state.json
+  run_complete.json
+  requests/
   raw/
   normalized/
   assets/thumbs/

@@ -33,6 +33,7 @@ def test_save_config_models_raw_normalized_and_errors(tmp_path):
 
 def test_request_id_deterministic_and_sensitive_to_version_and_format():
     one = build_request_id(
+        model_id="m@q4",
         model_label="m",
         image_id="img",
         mode="en_free",
@@ -40,6 +41,7 @@ def test_request_id_deterministic_and_sensitive_to_version_and_format():
         response_format_requested="strict_json",
     )
     two = build_request_id(
+        model_id="m@q4",
         model_label="m",
         image_id="img",
         mode="en_free",
@@ -47,6 +49,7 @@ def test_request_id_deterministic_and_sensitive_to_version_and_format():
         response_format_requested="strict_json",
     )
     three = build_request_id(
+        model_id="m@q4",
         model_label="m",
         image_id="img",
         mode="en_free",
@@ -54,12 +57,42 @@ def test_request_id_deterministic_and_sensitive_to_version_and_format():
         response_format_requested="strict_json",
     )
     four = build_request_id(
+        model_id="m@q4",
         model_label="m",
         image_id="img",
         mode="en_free",
         prompt_version="v1",
         response_format_requested="line_tags",
     )
+    five = build_request_id(
+        model_id="m@q4",
+        model_label="m",
+        image_id="img",
+        mode="en_pool",
+        prompt_version="v1",
+        response_format_requested="line_tags",
+        pool_hash="abc123",
+    )
     assert one == two
     assert one != three
     assert one != four
+    assert four != five
+
+
+def test_request_artifacts_and_lock(tmp_path):
+    cfg = load_config(build_config(tmp_path))
+    _, storage = create_run_storage(cfg, run_id="run3")
+    storage.acquire_lock()
+    assert storage.lock_path.exists()
+    storage.save_request_descriptor("req1", {"request_id": "req1"})
+    storage.save_request_status("req1", {"status": "running"})
+    storage.save_request_raw("req1", {"a": 1})
+    storage.save_request_normalized("req1", {"b": 2})
+    storage.save_request_diagnostics("req1", {"c": 3})
+    assert storage.request_path("req1", "request").exists()
+    assert storage.request_path("req1", "status").exists()
+    assert storage.request_path("req1", "raw").exists()
+    assert storage.request_path("req1", "normalized").exists()
+    assert storage.request_path("req1", "diagnostics").exists()
+    storage.release_lock()
+    assert not storage.lock_path.exists()

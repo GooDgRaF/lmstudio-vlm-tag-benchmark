@@ -90,10 +90,10 @@ diagnostics:
     classify_context_errors: true
 
 runtime:
+  result_mode: "deterministic"
   unload_model_after_run: true
   resume: true
-  skip_existing_success: true
-  retry_existing_errors: true
+  retry_failed: true
   sleep_after_load_sec: 2
   image_request_smoke_test: true
 

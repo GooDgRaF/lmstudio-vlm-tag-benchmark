@@ -74,6 +74,9 @@ def test_runner_vertical_slice_saves_raw_and_normalized(tmp_path, monkeypatch):
     assert len(normalized_files) == 1
     assert (run_dir / "report.html").exists()
     assert (run_dir / "diagnostics.json").exists()
+    assert (run_dir / "run_manifest.json").exists()
+    assert (run_dir / "run_state.json").exists()
+    assert (run_dir / "run_complete.json").exists()
 
 
 def test_to_data_url_normalizes_non_png_jpeg_images(tmp_path):
@@ -106,6 +109,47 @@ def test_runner_attempts_all_modes_for_image(tmp_path, monkeypatch):
     rows = (run_dir / "summary.csv").read_text(encoding="utf-8-sig").splitlines()
     # header + 6 mode rows
     assert len(rows) == 7
+
+
+def test_run_with_explicit_run_id_and_manifest_reuse(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = False
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", FakeClient)
+
+    run_dir = run_benchmark(cfg, limit=1, run_id="fixed")
+    manifest1 = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    run_dir2 = run_benchmark(cfg, limit=1, run_id="fixed", force_lock=True)
+    manifest2 = json.loads((run_dir2 / "run_manifest.json").read_text(encoding="utf-8"))
+    assert run_dir == run_dir2
+    assert manifest1["request_count"] == manifest2["request_count"]
+
+
+def test_stale_lock_fails_without_force_lock(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", FakeClient)
+    run_dir = run_benchmark(cfg, limit=1, run_id="locked")
+    (run_dir / "run.lock").write_text("stale", encoding="utf-8")
+
+    try:
+        run_benchmark(cfg, limit=1, run_id="locked")
+        assert False, "Expected lock error"
+    except RuntimeError as exc:
+        assert "Run is locked" in str(exc)
+
+
+def test_force_lock_allows_continue(tmp_path, monkeypatch):
+    path = build_config(tmp_path)
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", FakeClient)
+    run_dir = run_benchmark(cfg, limit=1, run_id="locked-force")
+    (run_dir / "run.lock").write_text("stale", encoding="utf-8")
+    run_dir2 = run_benchmark(cfg, limit=1, run_id="locked-force", force_lock=True)
+    assert run_dir2 == run_dir
 
 
 def test_runner_preload_unload_is_called(tmp_path, monkeypatch):

@@ -97,10 +97,10 @@ def build_config(base: Path) -> Path:
             },
         },
         "runtime": {
+            "result_mode": "deterministic",
             "unload_model_after_run": True,
             "resume": True,
-            "skip_existing_success": True,
-            "retry_existing_errors": True,
+            "retry_failed": True,
             "sleep_after_load_sec": 0,
             "image_request_smoke_test": True,
         },

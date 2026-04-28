@@ -59,7 +59,7 @@ def cmd_dry_run(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     cfg = _load_validated_config(args.config)
-    run_dir = run_benchmark(cfg, limit=args.limit)
+    run_dir = run_benchmark(cfg, limit=args.limit, run_id=args.run_id, force_lock=args.force_lock)
     print(f"Run completed: {run_dir}")
     return 0
 
@@ -96,6 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="Execute benchmark")
     run.add_argument("--config", required=True)
     run.add_argument("--limit", type=int, default=None)
+    run.add_argument("--run-id", default=None)
+    run.add_argument("--force-lock", action="store_true")
     run.set_defaults(func=cmd_run)
 
     report = sub.add_parser("report", help="Build HTML report for an existing run")

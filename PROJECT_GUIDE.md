@@ -67,6 +67,8 @@ python main.py validate-config --config config.smoke.yaml
 python main.py dry-run --config config.smoke.yaml
 python main.py list-models --config config.smoke.yaml
 python main.py run --config config.smoke.yaml
+python main.py run --config config.smoke.yaml --run-id smoke-001
+python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
 python main.py report --run results/<run_id>
 ```
 
@@ -76,6 +78,8 @@ python main.py report --run results/<run_id>
 - `dry-run` — перед запуском benchmark, чтобы увидеть количество моделей, режимов и картинок.
 - `list-models` — когда нужно проверить доступность LM Studio API и список моделей.
 - `run` — основной запуск benchmark; при `report.generate_html: true` создает HTML-отчет автоматически.
+- `run --run-id <id>` — продолжить/повторить конкретный run-каталог с манифестом запросов.
+- `run --force-lock` — снять stale `run.lock` после аварийного завершения.
 - `report` — пересобрать HTML для уже существующей папки `results/<run_id>`.
 
 ## Конфиги
@@ -208,9 +212,13 @@ en_pool_explained
 results/<run_id>/
   run_config.yaml
   models.json
+  run_manifest.json
+  run_state.json
+  run_complete.json
   summary.csv
   report.html
   errors.log
+  requests/
   raw/
   normalized/
   assets/thumbs/
@@ -222,6 +230,7 @@ results/<run_id>/
 - `report.html` — первая точка входа после запуска (answer matrix для сравнения моделей по image x mode);
 - `summary.csv` — таблица по всем запросам;
 - `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
+- `requests/<request_id>/` — каноничные request-артефакты (`request/status/raw/normalized/diagnostics`);
 - `raw/<request_id>.json` — исходный ответ LM Studio;
 - `models/<model_label>/load.json` — фактический load config и `instance_id`;
 - `models/<model_label>/smoke_test.json` — результат image smoke-test;

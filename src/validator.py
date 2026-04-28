@@ -78,6 +78,12 @@ def validate_config(cfg: BenchmarkConfig) -> None:
         if mode not in KNOWN_MODES:
             raise ValidationError(f"Unknown mode: {mode}")
 
+    if cfg.runtime.result_mode not in {"deterministic", "overwrite", "accumulate"}:
+        raise ValidationError(
+            f"Unsupported runtime.result_mode: {cfg.runtime.result_mode}. "
+            "Expected deterministic, overwrite, or accumulate."
+        )
+
     pool_paths = [
         cfg.pools.ru_plain,
         cfg.pools.en_plain,
