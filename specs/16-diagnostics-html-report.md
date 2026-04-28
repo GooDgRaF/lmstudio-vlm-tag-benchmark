@@ -364,6 +364,7 @@ Manual review expectations:
 Fill this after implementation:
 
 - Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Added `diagnostics.html` generation from `diagnostics.json`, linked `report.html` -> `diagnostics.html` when available, added back-link from diagnostics page to answer matrix, and updated CLI/report flow to refresh both reports.
+- Changed files: src/report.py; src/runner.py; main.py; tests/test_report.py; README.md; PROJECT_GUIDE.md; AGENTS.md
+- Checks run: python -m pytest -q; python main.py validate-config --config config.smoke.yaml; python main.py dry-run --config config.smoke.yaml
+- Notes: Diagnostics rendering is static table-first HTML and intentionally keeps heavy payloads in linked JSON artifacts.

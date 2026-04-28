@@ -7,7 +7,7 @@ from pathlib import Path
 from src.config import BenchmarkConfig, ConfigError, load_config
 from src.image_loader import discover_images
 from src.lmstudio_client import LMStudioClient, LMStudioClientError
-from src.report import build_report
+from src.report import build_diagnostics_report, build_report
 from src.runner import run_benchmark
 from src.validator import ValidationError, validate_config
 
@@ -69,7 +69,10 @@ def cmd_report(args: argparse.Namespace) -> int:
     if not run_dir.exists():
         raise SystemExit(f"Run directory does not exist: {run_dir}")
     report_path = build_report(run_dir)
+    diagnostics_path = build_diagnostics_report(run_dir)
     print(f"Report generated: {report_path}")
+    if diagnostics_path is not None:
+        print(f"Diagnostics report generated: {diagnostics_path}")
     return 0
 
 

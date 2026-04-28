@@ -343,6 +343,7 @@ Manual review expectations:
 Fill this after implementation:
 
 - Done:
-- Changed files:
-- Checks run:
-- Notes:
+- Done: Replaced gallery report with answer matrix report grouped by image and mode, added best-effort per-image thumbnails, duplicate-row note, compact top summary, mode legend, diagnostics link when present, and compact answer-only cells (accepted/rejected/error/not-run).
+- Changed files: src/report.py; tests/test_report.py; README.md; PROJECT_GUIDE.md
+- Checks run: python -m pytest -q tests/test_report.py
+- Notes: Matrix cells intentionally omit latency/token/GPU diagnostics; those are deferred to diagnostics outputs in later specs.

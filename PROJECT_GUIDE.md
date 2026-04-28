@@ -1,4 +1,4 @@
-# Project Guide
+﻿# Project Guide
 
 Этот документ — рабочая карта репозитория Local VLM Image Tagger Benchmark: где что лежит, какие команды использовать и куда смотреть при типичных задачах.
 
@@ -218,7 +218,7 @@ results/<run_id>/
 
 Что смотреть:
 
-- `report.html` — первая точка входа после запуска;
+- `report.html` — первая точка входа после запуска (answer matrix для сравнения моделей по image x mode);
 - `summary.csv` — таблица по всем запросам;
 - `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
 - `raw/<request_id>.json` — исходный ответ LM Studio;
@@ -262,6 +262,12 @@ python -m pytest -q
 
 ## Как расширять
 
+## HTML outputs
+
+- `report.html` is the answer matrix for manual model comparison.
+- `diagnostics.html` is a detailed runtime/service diagnostics page.
+- `python main.py report --run results/<run_id>` rebuilds both HTML reports when diagnostics data is present.
+
 ### Добавить модель
 
 1. Добавьте модель в `models/models.active.yaml`.
@@ -304,3 +310,4 @@ python main.py run --config config.smoke.yaml
 ## Что держать простым
 
 v1 — локальный CLI benchmark. Для этой версии не нужны GUI, web-server, SQLite, async runner, judge-модель, plugin-system и backend-ы кроме LM Studio.
+

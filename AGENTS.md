@@ -49,7 +49,7 @@ build report.html
 python main.py run --config config.smoke.yaml
 ```
 
-После запуска смотрите `results/<run_id>/report.html`, `summary.csv`, `errors.log`.
+После запуска смотрите `results/<run_id>/report.html`, `diagnostics.html`, `summary.csv`, `errors.log`.
 
 ## Карта модулей
 
@@ -114,12 +114,14 @@ If the user reports multiple loaded LM Studio instances, inspect:
 For debugging a run, inspect in this order:
 
 1. `results/<run_id>/report.html`
-2. `results/<run_id>/summary.csv`
-3. `results/<run_id>/errors.log`
-4. `results/<run_id>/models/<model_label>/load.json`
-5. `results/<run_id>/models/<model_label>/smoke_test.json`
-6. `results/<run_id>/normalized/<request_id>.json`
-7. `results/<run_id>/raw/<request_id>.json`
+2. `results/<run_id>/diagnostics.html`
+3. `results/<run_id>/diagnostics.json`
+4. `results/<run_id>/summary.csv`
+5. `results/<run_id>/errors.log`
+6. `results/<run_id>/models/<model_label>/load.json`
+7. `results/<run_id>/models/<model_label>/smoke_test.json`
+8. `results/<run_id>/normalized/<request_id>.json`
+9. `results/<run_id>/raw/<request_id>.json`
 
 `pool_validation_failed` means the model returned values outside the configured pool. Treat it as benchmark signal unless the user is asking to change pool behavior.
 

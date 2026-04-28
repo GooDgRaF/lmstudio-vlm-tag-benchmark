@@ -1,4 +1,4 @@
-# Local VLM Image Tagger Benchmark
+﻿# Local VLM Image Tagger Benchmark
 
 CLI-проект для сравнения локальных vision-language моделей в LM Studio на задаче автоматического тегирования изображений.
 
@@ -98,7 +98,7 @@ results/<run_id>/
 
 Главные файлы:
 
-- `report.html` — основной HTML-отчет для просмотра глазами;
+- `report.html` — основной HTML-отчет в формате answer matrix (image x mode x model -> answer);
 - `summary.csv` — таблица для Excel и дальнейшего анализа;
 - `raw/` — сырые ответы LM Studio;
 - `normalized/` — нормализованные ответы, ошибки и диагностические поля;
@@ -107,3 +107,10 @@ results/<run_id>/
 ## Ограничения v1
 
 Проект остается простым CLI benchmark. В v1 не входят GUI, web-server, SQLite, async runner, judge-модель, plugin-system и поддержка backend-ов кроме LM Studio.
+
+## Reports
+
+- `report.html` is the primary answer matrix (`image x mode x model`).
+- `diagnostics.html` is the secondary technical diagnostics page.
+- `python main.py report --run results/<run_id>` refreshes both pages when `diagnostics.json` exists.
+
