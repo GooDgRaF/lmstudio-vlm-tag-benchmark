@@ -168,8 +168,9 @@ def test_report_matrix_and_escape(tmp_path):
     assert "RU free" in html
     assert "class='chip ok'" in html
     assert "class='chip warn'" in html
-    assert "rejected ids" in html
-    assert "request_error: &lt;boom&gt;" in html
+    assert "<div class='label'>" not in html
+    assert ">pool violation<" not in html
+    assert "&lt;boom&gt;" not in html
     assert "Diagnostics report" in html
     assert "prompt_tokens" not in html
     assert "gpu_memory_before_mb" not in html
@@ -272,7 +273,6 @@ def test_duplicate_rows_last_wins_and_not_run(tmp_path):
     assert "Duplicate request rows: 1" in html
     assert "new" in html
     assert "old" not in html
-    assert "not run" in html
 
 
 def test_diagnostics_html_and_cross_links(tmp_path):

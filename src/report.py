@@ -115,49 +115,24 @@ def _ensure_thumbnail(image_path: str, output_path: Path, size: int) -> bool:
         return False
 
 
-def _trim_error(error_type: str, error: str, max_len: int = 120) -> str:
-    base = error_type or "error"
-    detail = (error or "").strip()
-    if not detail:
-        return base
-    if len(detail) > max_len:
-        detail = detail[: max_len - 1] + "…"
-    return f"{base}: {detail}"
-
-
 def _render_chip(text: str, css_class: str) -> str:
     return f"<span class='chip {css_class}'>{html.escape(text)}</span>"
 
 
 def _render_answer_cell(cell: dict[str, Any] | None) -> str:
     if cell is None:
-        return "<div class='state muted'>not run</div>"
+        return ""
 
     accepted = cell.get("accepted_tags") or []
     rejected_tags = cell.get("rejected_tags") or []
     rejected_ids = cell.get("rejected_ids") or []
-    error_type = str(cell.get("error_type") or "").strip()
-    error = str(cell.get("error") or "").strip()
-
-    parts: list[str] = []
-    if accepted:
-        chips = "".join(_render_chip(tag, "ok") for tag in accepted)
-        parts.append(f"<div class='group'><div class='label'>accepted</div><div class='chips'>{chips}</div></div>")
-
-    if rejected_tags:
-        chips = "".join(_render_chip(tag, "warn") for tag in rejected_tags)
-        parts.append(f"<div class='group'><div class='label'>out of pool</div><div class='chips'>{chips}</div></div>")
-
-    if rejected_ids:
-        chips = "".join(_render_chip(tag, "warn mono") for tag in rejected_ids)
-        parts.append(f"<div class='group'><div class='label'>rejected ids</div><div class='chips'>{chips}</div></div>")
-
-    if error_type:
-        parts.append(f"<div class='state error'>{html.escape(_trim_error(error_type, error))}</div>")
-
-    if not parts:
-        return "<div class='state muted'>no answer</div>"
-    return "".join(parts)
+    chips: list[str] = []
+    chips.extend(_render_chip(tag, "ok") for tag in accepted)
+    chips.extend(_render_chip(tag, "warn") for tag in rejected_tags)
+    chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
+    if not chips:
+        return ""
+    return f"<div class='chips'>{''.join(chips)}</div>"
 
 
 def build_report(run_dir: Path) -> Path:
@@ -232,8 +207,6 @@ def build_report(run_dir: Path) -> Path:
             if thumb_ok
             else "<div class='thumb missing'>no preview</div>"
         )
-        image_label = html.escape(Path(image_path).name if image_path else image_id)
-        image_meta_line = html.escape(image_rel_path or image_path or image_id)
         image_link = (
             f"<a href='{html.escape(Path(image_path).as_uri())}' class='small'>open image</a>"
             if image_path and Path(image_path).exists()
@@ -255,8 +228,6 @@ def build_report(run_dir: Path) -> Path:
                 image_cell = (
                     f"<td class='image-cell' rowspan='{len(image_modes)}'>"
                     f"{thumb_html}"
-                    f"<div class='image-label'>{image_label}</div>"
-                    f"<div class='small'>{image_meta_line}</div>"
                     f"{image_link}"
                     "</td>"
                 )
@@ -296,13 +267,12 @@ def build_report(run_dir: Path) -> Path:
     table {{ border-collapse: collapse; min-width: 960px; width: 100%; }}
     th, td {{ border: 1px solid #e2e8f0; padding: 6px; vertical-align: top; }}
     thead th {{ position: sticky; top: 0; background: #f1f5f9; z-index: 2; }}
-    th.image-col, td.image-cell {{ position: sticky; left: 0; background: #fff; z-index: 1; min-width: 220px; max-width: 220px; }}
-    th.mode-col, td.mode-cell {{ position: sticky; left: 220px; background: #fff; z-index: 1; min-width: 90px; }}
+    th.image-col, td.image-cell {{ position: sticky; left: 0; background: #fff; z-index: 1; min-width: 260px; max-width: 260px; }}
+    th.mode-col, td.mode-cell {{ position: sticky; left: 260px; background: #fff; z-index: 1; min-width: 90px; }}
     thead th.image-col, thead th.mode-col {{ z-index: 3; background: #f1f5f9; }}
     .model-col {{ min-width: 220px; }}
-    .thumb {{ width: 180px; height: 120px; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
-    .thumb.missing {{ width: 180px; height: 120px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }}
-    .image-label {{ font-weight: 600; margin-bottom: 3px; word-break: break-word; }}
+    .thumb {{ width: 100%; height: auto; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
+    .thumb.missing {{ width: 100%; aspect-ratio: 3 / 2; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }}
     .small {{ color: #64748b; font-size: 11px; word-break: break-word; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 4px; }}
     .chip {{ display: inline-block; border-radius: 999px; padding: 2px 7px; font-size: 11px; line-height: 1.2; border: 1px solid #cbd5e1; }}
