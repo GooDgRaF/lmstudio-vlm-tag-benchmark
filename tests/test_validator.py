@@ -95,3 +95,13 @@ def test_duplicate_model_ids_allowed_if_labels_unique(tmp_path):
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     cfg = load_config(path)
     validate_config(cfg)
+
+
+def test_repo_reasoning_configs_validate():
+    for path in [
+        "config.smoke.yaml",
+        "config.example.yaml",
+        "config.rest-reasoning-smoke.yaml",
+    ]:
+        cfg = load_config(path)
+        validate_config(cfg)

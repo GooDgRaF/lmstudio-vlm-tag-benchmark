@@ -145,3 +145,44 @@ def test_smoke_test_uses_rest(tmp_path, monkeypatch):
     smoke = json.loads((run_dir / "models" / "m1_q4" / "smoke_test.json").read_text(encoding="utf-8"))
     assert smoke["ok"] is True
     assert fake.chat_rest_calls
+
+
+def test_smoke_fails_when_only_reasoning_present(tmp_path, monkeypatch):
+    class SmokeReasoningOnlyClient(FakeClient):
+        def chat_rest(self, **kwargs):
+            self.chat_rest_calls.append(kwargs)
+            return {"output": [{"type": "reasoning", "content": "thinking"}]}
+
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = True
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", SmokeReasoningOnlyClient)
+    run_dir = run_benchmark(cfg, limit=1)
+    smoke = json.loads((run_dir / "models" / "m1_q4" / "smoke_test.json").read_text(encoding="utf-8"))
+    assert smoke["ok"] is False
+    assert smoke["no_final_answer"] is True
+
+
+def test_output_truncated_survives_runner_merge(tmp_path, monkeypatch):
+    class TruncatedClient(FakeClient):
+        def chat_rest(self, **kwargs):
+            self.chat_rest_calls.append(kwargs)
+            return {
+                "output": [{"type": "message", "content": "cat"}],
+                "stats": {"input_tokens": 10, "total_output_tokens": kwargs["max_output_tokens"]},
+            }
+
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["modes"] = ["en_free"]
+    data["runtime"]["image_request_smoke_test"] = False
+    data["generation"]["max_tokens"] = 64
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    monkeypatch.setattr("src.runner.LMStudioClient", TruncatedClient)
+    run_dir = run_benchmark(cfg, limit=1)
+    normalized = json.loads(next((run_dir / "normalized").glob("*.json")).read_text(encoding="utf-8"))
+    assert normalized["output_truncated"] is True

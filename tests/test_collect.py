@@ -152,3 +152,47 @@ def test_collect_accumulate_includes_multiple_attempts(tmp_path):
     diagnostics = json.loads(result["diagnostics_path"].read_text(encoding="utf-8"))
     assert diagnostics["run"]["attempt_count"] == 2
     assert diagnostics["run"]["successful_attempt_count"] == 1
+
+
+def test_collect_preserves_rest_reasoning_fields(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    manifest["requests"][0]["transport"] = "rest"
+    manifest["requests"][0]["reasoning_requested"] = "on"
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_json(
+        run_dir / "requests" / "req1" / "normalized.json",
+        {
+            "response_format_used": "line_tags",
+            "accepted_tags": ["cat"],
+            "accepted_ids": [],
+            "rejected_tags": [],
+            "rejected_ids": [],
+            "pool_violations": 0,
+            "parse_ok": True,
+            "schema_ok": True,
+            "json_extracted": False,
+            "line_fallback_used": False,
+            "pool_ok": True,
+            "latency_sec": 0.12,
+            "transport": "rest",
+            "reasoning_requested": "on",
+            "final_content_empty": False,
+            "final_content_length": 3,
+            "reasoning_content_present": True,
+            "reasoning_content_length": 100,
+            "reasoning_tokens": 25,
+            "no_final_answer": False,
+            "output_truncated": True,
+            "error_type": None,
+            "error": None,
+        },
+    )
+    result = collect_run(run_dir)
+    import csv
+
+    row = next(csv.DictReader(result["summary_path"].open(encoding="utf-8-sig", newline="")))
+    assert row["transport"] == "rest"
+    assert row["reasoning_requested"] == "on"
+    assert row["reasoning_tokens"] == "25"
+    assert row["output_truncated"].lower() == "true"

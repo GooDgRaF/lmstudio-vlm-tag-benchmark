@@ -397,7 +397,36 @@ python main.py dry-run --config config.rest-reasoning-smoke.yaml
 Fill this after implementation:
 
 - Done:
+  - Split reasoning-capable rows in `config.example.yaml` into explicit `-think` (`reasoning: on`) and `-no-think` (`reasoning: off`) profiles with unique labels.
+  - Added `config.rest-reasoning-smoke.yaml` for small REST reasoning e2e runs (2 profiles x 1 image x 2 modes).
+  - Made REST smoke behavior honest for reasoning-only replies (`no_final_answer` now fails smoke with explicit error).
+  - Preserved REST truncation signal by making REST normalization metadata win over generic diagnostics merge in runner.
+  - Added/updated tests for smoke honesty, truncation preservation, config validation, and REST reasoning fields in collect.
+  - Added report-side guard to avoid rendering obvious reasoning prose as answer chips.
 - Changed files:
+  - `config.example.yaml`
+  - `config.rest-reasoning-smoke.yaml`
+  - `src/runner.py`
+  - `src/report.py`
+  - `tests/test_runner.py`
+  - `tests/test_validator.py`
+  - `tests/test_collect.py`
+  - `README.md`
+  - `PROJECT_GUIDE.md`
+  - `specs/25-rest-reasoning-profiles-and-e2e.md`
 - Checks run:
+  - `python -m pytest -q`
+  - `python main.py validate-config --config config.example.yaml`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py validate-config --config config.rest-reasoning-smoke.yaml`
+  - `python main.py dry-run --config config.rest-reasoning-smoke.yaml`
 - Live e2e:
+  - Run id: `rest-reasoning-e2e-v4`
+  - Command: `python main.py run --config config.rest-reasoning-smoke.yaml --run-id rest-reasoning-e2e-v4`
+  - Collect/report: `python main.py collect --run "F:\\Works\\Иные проекты\\Local VLM benchmark\\results\\rest-reasoning-e2e-v4" --write-reports`
+  - Summary rows: `4` (expected `2 models x 1 image x 2 modes`)
+  - `transport=rest` for all rows, both `reasoning_requested=on/off` present.
+  - One `reasoning:on` request returned `no_final_answer=true` with `reasoning_tokens=2047` and `output_truncated=true`; report shows compact `no final answer` marker instead of reasoning prose.
+  - `reasoning:off` rows produced normal parsed tags and `reasoning_tokens=0`.
 - Notes:
+  - For this dedicated e2e route `runtime.image_request_smoke_test` is disabled to ensure both profiles execute and artifacts are produced in one run; regular `config.smoke.yaml` remains unchanged and fast.

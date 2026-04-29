@@ -120,6 +120,20 @@ def _render_chip(text: str, css_class: str) -> str:
     return f"<span class='chip {css_class}'>{html.escape(text)}</span>"
 
 
+def _looks_like_reasoning_prose(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    lower = text.lower()
+    if "thinking process" in lower:
+        return True
+    if len(text) > 80:
+        return True
+    if text.count(" ") >= 6 and (":" in text or "." in text):
+        return True
+    return False
+
+
 def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     if cell is None:
         return ""
@@ -131,7 +145,7 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     chips: list[str] = []
     if str(cell.get("no_final_answer") or "").lower() in {"true", "1", "yes"}:
         chips.append(_render_chip("no final answer", "warn"))
-    chips.extend(_render_chip(tag, accepted_class) for tag in accepted)
+    chips.extend(_render_chip(tag, accepted_class) for tag in accepted if not _looks_like_reasoning_prose(tag))
     chips.extend(_render_chip(tag, "warn") for tag in rejected_tags)
     chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
     if not chips:

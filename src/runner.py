@@ -85,7 +85,11 @@ def _status_decision(cfg: BenchmarkConfig, status_payload: dict[str, Any] | None
 
 
 def _run_smoke_test(
-    client: LMStudioClient, runtime_model_id: str, reasoning_requested: str, image: DiscoveredImage | None
+    client: LMStudioClient,
+    runtime_model_id: str,
+    reasoning_requested: str,
+    max_output_tokens: int,
+    image: DiscoveredImage | None,
 ) -> dict[str, Any]:
     if image is None:
         return {"ok": False, "error": "No images found for smoke test"}
@@ -97,14 +101,29 @@ def _run_smoke_test(
             input_items=input_items,
             temperature=0.0,
             top_p=1.0,
-            max_output_tokens=16,
+            max_output_tokens=max_output_tokens,
             reasoning=reasoning_requested,
         )
-        normalized = normalize_rest_chat_response(completion, reasoning_requested=reasoning_requested, max_output_tokens=16)
+        normalized = normalize_rest_chat_response(
+            completion,
+            reasoning_requested=reasoning_requested,
+            max_output_tokens=max_output_tokens,
+        )
+        if normalized.get("no_final_answer"):
+            return {
+                "ok": False,
+                "error": "REST smoke response did not contain a non-empty final message",
+                "preview": "",
+                "output_source": normalized["output_source"],
+                "no_final_answer": True,
+                "reasoning_content_present": normalized["reasoning_content_present"],
+                "reasoning_content_length": normalized["reasoning_content_length"],
+            }
         return {
             "ok": True,
             "preview": normalized["final_content"][:200],
             "output_source": normalized["output_source"],
+            "no_final_answer": False,
             "reasoning_content_present": normalized["reasoning_content_present"],
             "reasoning_content_length": normalized["reasoning_content_length"],
         }
@@ -443,6 +462,7 @@ def run_benchmark(
                     client,
                     loaded.instance_id,
                     model.reasoning,
+                    max(64, min(cfg.generation.max_tokens, 256)),
                     images[0] if images else None,
                 )
                 storage.save_model_metadata(model.label, "smoke_test.json", smoke)
@@ -674,8 +694,8 @@ def run_benchmark(
                         "latency_sec": latency,
                         "transport": "rest",
                         "reasoning_requested": model.reasoning,
-                        **rest_meta,
                         **usage_diag,
+                        **rest_meta,
                         "requested_context_length": cfg.load.context_length,
                         "actual_context_length": loaded.actual_context_length,
                     }

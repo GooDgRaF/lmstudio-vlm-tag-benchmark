@@ -1,0 +1,111 @@
+lmstudio:
+  host: "http://localhost:1234"
+  api_base_url: "http://localhost:1234/api/v1"
+  openai_base_url: "http://localhost:1234/v1"
+  api_key: "lm-studio"
+
+models:
+  - id: "qwen/qwen3.5-9b@q4_k_m"
+    base_model_id: "qwen/qwen3.5-9b"
+    label: "qwen3_5-9b-q4_k_m-think"
+    reasoning: "on"
+    display_name: "Qwen3.5 9B"
+    params: "9B"
+    architecture: "qwen35"
+    quant: "Q4_K_M"
+    quant_bits: 4
+    size_bytes: 6548927017
+    max_context_length: 262144
+
+  - id: "qwen/qwen3.5-9b@q4_k_m"
+    base_model_id: "qwen/qwen3.5-9b"
+    label: "qwen3_5-9b-q4_k_m-no-think"
+    reasoning: "off"
+    display_name: "Qwen3.5 9B"
+    params: "9B"
+    architecture: "qwen35"
+    quant: "Q4_K_M"
+    quant_bits: 4
+    size_bytes: 6548927017
+    max_context_length: 262144
+
+input:
+  image_dir: "ImgToTag"
+  recursive: false
+  extensions: [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
+
+output:
+  results_dir: "results"
+
+modes:
+  - ru_pool
+  - en_pool
+
+pools:
+  ru_plain: "pools/ru_plain.txt"
+  en_plain: "pools/en_plain.txt"
+  ru_explained: "pools/ru_explained_ids.tsv"
+  en_explained: "pools/en_explained_ids.tsv"
+
+generation:
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 2048
+
+load:
+  context_length: 16384
+  flash_attention: true
+  offload_kv_cache_to_gpu: true
+  echo_load_config: true
+
+limits:
+  max_tags: 10
+  timeout_sec: 300
+  retries: 1
+  limit_images: 1
+
+response_formats:
+  free_modes: { primary: "line_tags", fallback: "strict_json" }
+  plain_pool_modes: { primary: "line_tags", fallback: "strict_json" }
+  explained_pool_modes: { primary: "line_ids", fallback: null }
+
+validation:
+  use_response_format: true
+  allow_json_extraction: true
+  allow_line_fallback: true
+  drop_tags_not_in_pool: true
+  save_invalid_results: true
+
+diagnostics:
+  gpu_memory:
+    enabled: true
+    command: "nvidia-smi"
+    fail_if_unavailable: false
+  context:
+    record_usage_tokens: true
+    warning_ratio: 0.85
+    error_ratio: 0.97
+    classify_context_errors: true
+
+runtime:
+  result_mode: "deterministic"
+  unload_model_after_run: true
+  resume: true
+  retry_failed: true
+  sleep_after_load_sec: 2
+  # Disabled for this e2e profile comparison route because some reasoning-on
+  # models may return delayed final content in smoke-sized checks.
+  image_request_smoke_test: false
+
+report:
+  generate_csv: true
+  generate_html: true
+  open_html_after_run: false
+  thumbnail_size: 256
+
+evaluation:
+  track_quality_for_manual_review: true
+  track_speed: true
+  track_json_stability: true
+  track_pool_compliance: true
+  track_hallucinated_tags: true

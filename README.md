@@ -49,6 +49,13 @@ python main.py run --config config.example.yaml --limit 1
 
 Без `--limit` полный конфиг обрабатывает все изображения из `ImgToTag/` всеми настроенными моделями и режимами.
 
+Для небольшой проверки reasoning-профилей REST используйте:
+
+```bash
+python main.py validate-config --config config.rest-reasoning-smoke.yaml
+python main.py run --config config.rest-reasoning-smoke.yaml --run-id rest-reasoning-e2e-v4
+```
+
 ## Документация
 
 - [PROJECT_GUIDE.md](PROJECT_GUIDE.md) — основная навигация по проекту, каталогам, конфигам и результатам.
