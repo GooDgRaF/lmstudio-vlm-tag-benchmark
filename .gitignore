@@ -185,3 +185,4 @@ cython_debug/
 /results/*
 !/results/.gitkeep
 /.tmp
+*.png
