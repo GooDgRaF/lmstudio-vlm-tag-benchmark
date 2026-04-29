@@ -624,9 +624,22 @@ Do not implement in this spec:
 
 ## Agent report
 
-Fill this after implementation:
-
 - Done:
+  - Migrated runner inference/smoke paths to LM Studio REST Chat (`chat_rest`) with REST input items.
+  - Removed normal-path dependence on OpenAI `messages/response_format` and disabled reasoning fallback-to-tags behavior.
+  - Wired `normalize_rest_chat_response` into runner and parse pipeline (`normalize_model_output(raw_output=final_content)` only).
+  - Added REST metadata to manifest/request artifacts and summary rows (`transport`, `reasoning_requested`, final/reasoning diagnostics).
+  - Extended request-id entropy with `transport` and `reasoning_requested`.
+  - Updated runner/storage tests for REST path and artifact semantics.
 - Changed files:
+  - `src/runner.py`
+  - `src/storage.py`
+  - `tests/test_runner.py`
+  - `tests/test_storage.py`
+  - `specs/23-rest-runner-artifacts.md`
 - Checks run:
+  - `python -m pytest -q tests/test_runner.py tests/test_storage.py tests/test_diagnostics.py`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
 - Notes:
+  - `chat_completion` remains in client only for legacy compatibility, but normal runner path now uses REST only.

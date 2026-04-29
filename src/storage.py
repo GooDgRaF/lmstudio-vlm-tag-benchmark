@@ -30,6 +30,8 @@ SUMMARY_FIELDS = [
     "prompt_version",
     "response_format_requested",
     "response_format_used",
+    "transport",
+    "reasoning_requested",
     "accepted_tags",
     "accepted_ids",
     "rejected_tags",
@@ -50,6 +52,15 @@ SUMMARY_FIELDS = [
     "context_near_limit",
     "context_overflow",
     "output_truncated",
+    "final_content_empty",
+    "final_content_length",
+    "reasoning_content_present",
+    "reasoning_content_length",
+    "reasoning_tokens",
+    "no_final_answer",
+    "normalization_error_type",
+    "tokens_per_second",
+    "time_to_first_token_seconds",
     "gpu_memory_before_mb",
     "gpu_memory_after_mb",
     "error_type",
@@ -76,15 +87,26 @@ def build_request_id(
     mode: str,
     prompt_version: str,
     response_format_requested: str,
+    transport: str = "rest",
+    reasoning_requested: str = "default",
     pool_hash: str | None = None,
 ) -> str:
-    source_parts = [model_id, model_label, image_id, mode, prompt_version, response_format_requested]
+    source_parts = [
+        model_id,
+        model_label,
+        image_id,
+        mode,
+        prompt_version,
+        response_format_requested,
+        transport,
+        reasoning_requested,
+    ]
     if pool_hash:
         source_parts.append(pool_hash)
     source = "|".join(source_parts)
     digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:12]
     base = sanitize_filename(
-        f"{model_label}_{image_id}_{mode}_{prompt_version}_{response_format_requested}"
+        f"{model_label}_{image_id}_{mode}_{prompt_version}_{response_format_requested}_{transport}_{reasoning_requested}"
     )
     if pool_hash:
         base = f"{base}_{pool_hash[:8]}"
@@ -132,6 +154,7 @@ class RunStorage:
                 "id": m.id,
                 "base_model_id": m.base_model_id,
                 "label": m.label,
+                "reasoning": m.reasoning,
                 "params": m.params,
                 "quant": m.quant,
                 "quant_bits": m.quant_bits,

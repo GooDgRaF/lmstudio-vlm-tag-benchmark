@@ -24,8 +24,13 @@ from src.diagnostics import (
     summarize_model_requests,
 )
 from src.image_loader import DiscoveredImage, discover_images
-from src.lmstudio_client import LMStudioClient, LMStudioClientError, ResponseFormatUnsupportedError
-from src.prompts import PROMPT_VERSION, build_prompt, strict_json_response_format
+from src.lmstudio_client import (
+    LMStudioClient,
+    LMStudioClientError,
+    build_rest_input_items,
+    normalize_rest_chat_response,
+)
+from src.prompts import PROMPT_VERSION, build_prompt
 from src.report import build_diagnostics_report, build_report
 from src.storage import build_request_id, create_run_storage
 from src.tag_pools import TagPools, load_tag_pools
@@ -47,86 +52,6 @@ def _to_data_url(path: str) -> str:
         image.convert("RGB").save(output, format="JPEG", quality=95)
     encoded = base64.b64encode(output.getvalue()).decode("ascii")
     return f"data:image/jpeg;base64,{encoded}"
-
-
-def _build_messages(prompt: str, image_path: str) -> list[dict[str, Any]]:
-    return [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": _to_data_url(image_path)}},
-            ],
-        }
-    ]
-
-
-def _extract_text_from_completion(payload: dict[str, Any]) -> dict[str, Any]:
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        return {
-            "raw_output": "",
-            "output_source": "empty",
-            "content_empty": True,
-            "reasoning_content_used": False,
-            "content_length": 0,
-            "reasoning_content_length": 0,
-        }
-    first = choices[0]
-    if not isinstance(first, dict):
-        return {
-            "raw_output": "",
-            "output_source": "empty",
-            "content_empty": True,
-            "reasoning_content_used": False,
-            "content_length": 0,
-            "reasoning_content_length": 0,
-        }
-    message = first.get("message")
-    if not isinstance(message, dict):
-        return {
-            "raw_output": "",
-            "output_source": "empty",
-            "content_empty": True,
-            "reasoning_content_used": False,
-            "content_length": 0,
-            "reasoning_content_length": 0,
-        }
-    content = "" if message.get("content") is None else str(message.get("content"))
-    reasoning_content = "" if message.get("reasoning_content") is None else str(message.get("reasoning_content"))
-
-    if content.strip():
-        return {
-            "raw_output": content,
-            "output_source": "content",
-            "content_empty": False,
-            "reasoning_content_used": False,
-            "content_length": len(content),
-            "reasoning_content_length": len(reasoning_content),
-        }
-    if reasoning_content.strip():
-        return {
-            "raw_output": reasoning_content,
-            "output_source": "reasoning_content",
-            "content_empty": True,
-            "reasoning_content_used": True,
-            "content_length": len(content),
-            "reasoning_content_length": len(reasoning_content),
-        }
-    return {
-        "raw_output": "",
-        "output_source": "empty",
-        "content_empty": True,
-        "reasoning_content_used": False,
-        "content_length": len(content),
-        "reasoning_content_length": len(reasoning_content),
-    }
-
-
-def _response_format_payload(name: str, max_tags: int) -> dict[str, Any] | None:
-    if name == "strict_json":
-        return strict_json_response_format(max_tags)
-    return None
 
 
 def _pool_hash_for_mode(mode: str, pool_hashes: dict[str, str]) -> str | None:
@@ -159,22 +84,30 @@ def _status_decision(cfg: BenchmarkConfig, status_payload: dict[str, Any] | None
     return "run"
 
 
-def _run_smoke_test(client: LMStudioClient, runtime_model_id: str, image: DiscoveredImage | None) -> dict[str, Any]:
+def _run_smoke_test(
+    client: LMStudioClient, runtime_model_id: str, reasoning_requested: str, image: DiscoveredImage | None
+) -> dict[str, Any]:
     if image is None:
         return {"ok": False, "error": "No images found for smoke test"}
     prompt = "Return one short tag for this image."
-    messages = _build_messages(prompt, image.image_path)
+    input_items = build_rest_input_items(prompt, _to_data_url(image.image_path))
     try:
-        completion = client.chat_completion(
+        completion = client.chat_rest(
             model_id=runtime_model_id,
-            messages=messages,
+            input_items=input_items,
             temperature=0.0,
             top_p=1.0,
-            max_tokens=16,
-            response_format=None,
+            max_output_tokens=16,
+            reasoning=reasoning_requested,
         )
-        output = _extract_text_from_completion(completion)
-        return {"ok": True, "preview": output["raw_output"][:200], "output_source": output["output_source"]}
+        normalized = normalize_rest_chat_response(completion, reasoning_requested=reasoning_requested, max_output_tokens=16)
+        return {
+            "ok": True,
+            "preview": normalized["final_content"][:200],
+            "output_source": normalized["output_source"],
+            "reasoning_content_present": normalized["reasoning_content_present"],
+            "reasoning_content_length": normalized["reasoning_content_length"],
+        }
     except LMStudioClientError as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -198,6 +131,8 @@ def _build_manifest_requests(
                     mode=mode,
                     prompt_version=prompt.prompt_version,
                     response_format_requested=prompt.response_format_requested,
+                    transport="rest",
+                    reasoning_requested=model.reasoning,
                     pool_hash=pool_hash,
                 )
                 requests.append(
@@ -212,6 +147,8 @@ def _build_manifest_requests(
                         "mode": mode,
                         "prompt_version": prompt.prompt_version,
                         "response_format_requested": prompt.response_format_requested,
+                        "transport": "rest",
+                        "reasoning_requested": model.reasoning,
                         "pool_hash": pool_hash,
                     }
                 )
@@ -237,6 +174,8 @@ def _manifest_for_run(cfg: BenchmarkConfig, run_id: str, pool_hashes: dict[str, 
                 "mode": item["mode"],
                 "prompt_version": item["prompt_version"],
                 "response_format_requested": item["response_format_requested"],
+                "transport": item.get("transport", "rest"),
+                "reasoning_requested": item.get("reasoning_requested", "default"),
             }
             for item in requests
         ],
@@ -500,7 +439,12 @@ def run_benchmark(
             model_diag["gpu_after_load"] = gpu_after
 
             if cfg.runtime.image_request_smoke_test:
-                smoke = _run_smoke_test(client, loaded.instance_id, images[0] if images else None)
+                smoke = _run_smoke_test(
+                    client,
+                    loaded.instance_id,
+                    model.reasoning,
+                    images[0] if images else None,
+                )
                 storage.save_model_metadata(model.label, "smoke_test.json", smoke)
                 model_diag["smoke_test_ok"] = bool(smoke.get("ok"))
                 model_diag["smoke_test_error"] = shorten_error(smoke.get("error"))
@@ -550,38 +494,19 @@ def run_benchmark(
                 else:
                     storage.save_request_status(req["request_id"], running_status)
 
-                response_format_payload = None
-                if cfg.validation.use_response_format:
-                    response_format_payload = _response_format_payload(prompt.response_format_requested, cfg.limits.max_tags)
-
                 start = time.perf_counter()
-                completion_payload: dict[str, Any]
                 response_format_used = prompt.response_format_requested
-                retried_without_response_format = False
+                completion_payload: dict[str, Any]
 
                 try:
-                    completion_payload = client.chat_completion(
+                    completion_payload = client.chat_rest(
                         model_id=loaded.instance_id,
-                        messages=_build_messages(prompt.prompt, image_path),
+                        input_items=build_rest_input_items(prompt.prompt, _to_data_url(image_path)),
                         temperature=cfg.generation.temperature,
                         top_p=cfg.generation.top_p,
-                        max_tokens=cfg.generation.max_tokens,
-                        response_format=response_format_payload,
+                        max_output_tokens=cfg.generation.max_tokens,
+                        reasoning=model.reasoning,
                     )
-                except ResponseFormatUnsupportedError:
-                    if cfg.validation.allow_line_fallback:
-                        retried_without_response_format = True
-                        response_format_used = "line_tags" if not mode.endswith("_pool_explained") else "line_ids"
-                        completion_payload = client.chat_completion(
-                            model_id=loaded.instance_id,
-                            messages=_build_messages(prompt.prompt, image_path),
-                            temperature=cfg.generation.temperature,
-                            top_p=cfg.generation.top_p,
-                            max_tokens=cfg.generation.max_tokens,
-                            response_format=None,
-                        )
-                    else:
-                        raise
                 except LMStudioClientError as exc:
                     latency = round(time.perf_counter() - start, 4)
                     normalized = {
@@ -601,6 +526,23 @@ def run_benchmark(
                         "line_fallback_used": False,
                         "pool_ok": False if mode.endswith("_pool") else True,
                         "pool_violations": 0,
+                        "transport": "rest",
+                        "reasoning_requested": model.reasoning,
+                        "final_content": "",
+                        "reasoning_content": "",
+                        "output_source": "empty",
+                        "final_content_empty": True,
+                        "final_content_length": 0,
+                        "reasoning_content_present": False,
+                        "reasoning_content_length": 0,
+                        "reasoning_content_used": False,
+                        "content_empty": True,
+                        "content_length": 0,
+                        "no_final_answer": False,
+                        "normalization_error_type": None,
+                        "reasoning_tokens": None,
+                        "tokens_per_second": None,
+                        "time_to_first_token_seconds": None,
                         "error_type": "request_error",
                         "error": str(exc),
                         "request_id": req["request_id"],
@@ -614,15 +556,45 @@ def run_benchmark(
                         "mode": mode,
                         "latency_sec": latency,
                     }
+                    raw_fail_payload = {
+                        "request_id": req["request_id"],
+                        "transport": "rest",
+                        "reasoning_requested": model.reasoning,
+                        "error": str(exc),
+                        "response": None,
+                        "final_content": "",
+                        "reasoning_content": "",
+                    }
                     if is_accumulate:
-                        storage.save_attempt_raw(req["request_id"], attempt_no, {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_attempt_raw(req["request_id"], attempt_no, raw_fail_payload)
                         storage.save_attempt_normalized(req["request_id"], attempt_no, normalized)
-                        storage.save_attempt_diagnostics(req["request_id"], attempt_no, {"request_id": req["request_id"], "status": "failed", "error_type": "request_error", "error": str(exc)})
+                        storage.save_attempt_diagnostics(
+                            req["request_id"],
+                            attempt_no,
+                            {
+                                "request_id": req["request_id"],
+                                "status": "failed",
+                                "transport": "rest",
+                                "reasoning_requested": model.reasoning,
+                                "error_type": "request_error",
+                                "error": str(exc),
+                            },
+                        )
                     else:
-                        storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_request_raw(req["request_id"], raw_fail_payload)
                         storage.save_request_normalized(req["request_id"], normalized)
-                        storage.save_request_diagnostics(req["request_id"], {"request_id": req["request_id"], "status": "failed", "error_type": "request_error", "error": str(exc)})
-                        storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "error": str(exc), "payload": None})
+                        storage.save_request_diagnostics(
+                            req["request_id"],
+                            {
+                                "request_id": req["request_id"],
+                                "status": "failed",
+                                "transport": "rest",
+                                "reasoning_requested": model.reasoning,
+                                "error_type": "request_error",
+                                "error": str(exc),
+                            },
+                        )
+                        storage.save_raw_output(req["request_id"], raw_fail_payload)
                         storage.save_normalized(req["request_id"], normalized)
 
                     failed_status = _request_status_payload(
@@ -644,8 +616,12 @@ def run_benchmark(
                     continue
 
                 latency = round(time.perf_counter() - start, 4)
-                output_meta = _extract_text_from_completion(completion_payload)
-                raw_text = str(output_meta["raw_output"])
+                rest_meta = normalize_rest_chat_response(
+                    completion_payload,
+                    reasoning_requested=model.reasoning,
+                    max_output_tokens=cfg.generation.max_tokens,
+                )
+                raw_text = str(rest_meta["final_content"])
 
                 normalized = normalize_model_output(
                     raw_output=raw_text,
@@ -658,8 +634,24 @@ def run_benchmark(
                     drop_tags_not_in_pool=cfg.validation.drop_tags_not_in_pool,
                     prompt_version=PROMPT_VERSION,
                 )
-                if retried_without_response_format:
-                    normalized["line_fallback_used"] = True
+                if rest_meta.get("no_final_answer"):
+                    normalized["parse_ok"] = False
+                    normalized["schema_ok"] = False
+                    normalized["accepted_tags"] = []
+                    normalized["accepted_ids"] = []
+                    normalized["rejected_tags"] = []
+                    normalized["rejected_ids"] = []
+                    normalized["pool_violations"] = 0
+                    normalized["pool_ok"] = False if mode.endswith("_pool") else True
+                    if rest_meta.get("normalization_error_type") == "bad_rest_response":
+                        normalized["error_type"] = "bad_rest_response"
+                        normalized["error"] = "REST response output field is missing or malformed"
+                    elif rest_meta.get("normalization_error_type") == "empty_rest_output":
+                        normalized["error_type"] = "empty_rest_output"
+                        normalized["error"] = "REST response output list is empty"
+                    else:
+                        normalized["error_type"] = "no_final_answer"
+                        normalized["error"] = "REST response did not contain a non-empty final message"
 
                 usage_diag = extract_usage_diagnostics(
                     completion_payload,
@@ -680,11 +672,9 @@ def run_benchmark(
                         "image_rel_path": req["image_rel_path"],
                         "mode": mode,
                         "latency_sec": latency,
-                        "output_source": output_meta["output_source"],
-                        "content_empty": output_meta["content_empty"],
-                        "reasoning_content_used": output_meta["reasoning_content_used"],
-                        "content_length": output_meta["content_length"],
-                        "reasoning_content_length": output_meta["reasoning_content_length"],
+                        "transport": "rest",
+                        "reasoning_requested": model.reasoning,
+                        **rest_meta,
                         **usage_diag,
                         "requested_context_length": cfg.load.context_length,
                         "actual_context_length": loaded.actual_context_length,
@@ -698,12 +688,14 @@ def run_benchmark(
                     "image_id": req["image_id"],
                     "image_rel_path": req["image_rel_path"],
                     "mode": mode,
+                    "transport": "rest",
+                    "reasoning_requested": model.reasoning,
                     "prompt_version": normalized["prompt_version"],
                     "response_format_requested": normalized["response_format_requested"],
                     "response_format_used": normalized["response_format_used"],
                     "latency_sec": latency,
-                    "retry_count": 1 if retried_without_response_format else 0,
-                    "retried_without_response_format": retried_without_response_format,
+                    "retry_count": 0,
+                    "retried_without_response_format": False,
                     "parse_ok": bool(normalized["parse_ok"]),
                     "schema_ok": bool(normalized["schema_ok"]),
                     "pool_ok": bool(normalized["pool_ok"]),
@@ -724,26 +716,46 @@ def run_benchmark(
                     "rejected_id_count": len(normalized.get("rejected_ids") or []),
                     "json_extracted": bool(normalized.get("json_extracted")),
                     "line_fallback_used": bool(normalized.get("line_fallback_used")),
-                    "empty_output": len((raw_text or "").strip()) == 0,
+                    "empty_output": bool(normalized.get("final_content_empty")),
                     "raw_output_length": len(raw_text or ""),
                     "output_source": normalized.get("output_source"),
                     "content_empty": bool(normalized.get("content_empty")),
                     "reasoning_content_used": bool(normalized.get("reasoning_content_used")),
                     "content_length": int(normalized.get("content_length") or 0),
                     "reasoning_content_length": int(normalized.get("reasoning_content_length") or 0),
+                    "reasoning_tokens": normalized.get("reasoning_tokens"),
+                    "tokens_per_second": normalized.get("tokens_per_second"),
+                    "time_to_first_token_seconds": normalized.get("time_to_first_token_seconds"),
+                    "no_final_answer": bool(normalized.get("no_final_answer")),
+                    "normalization_error_type": normalized.get("normalization_error_type"),
                     "raw_path": storage.raw_path(req["request_id"]).relative_to(storage.run_dir).as_posix(),
                     "normalized_path": storage.normalized_path(req["request_id"]).relative_to(storage.run_dir).as_posix(),
                 }
 
+                raw_payload = {
+                    "request_id": req["request_id"],
+                    "transport": "rest",
+                    "reasoning_requested": model.reasoning,
+                    "model_id": model.id,
+                    "model_label": model.label,
+                    "image_id": req["image_id"],
+                    "mode": mode,
+                    "prompt_version": normalized["prompt_version"],
+                    "response_format_requested": normalized["response_format_requested"],
+                    "response_format_used": normalized["response_format_used"],
+                    "final_content": rest_meta["final_content"],
+                    "reasoning_content": rest_meta["reasoning_content"],
+                    "response": completion_payload,
+                }
                 if is_accumulate:
-                    storage.save_attempt_raw(req["request_id"], attempt_no, {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text})
+                    storage.save_attempt_raw(req["request_id"], attempt_no, raw_payload)
                     storage.save_attempt_normalized(req["request_id"], attempt_no, normalized)
                     storage.save_attempt_diagnostics(req["request_id"], attempt_no, request_diag)
                 else:
-                    storage.save_request_raw(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text})
+                    storage.save_request_raw(req["request_id"], raw_payload)
                     storage.save_request_normalized(req["request_id"], normalized)
                     storage.save_request_diagnostics(req["request_id"], request_diag)
-                    storage.save_raw_output(req["request_id"], {"request_id": req["request_id"], "response": completion_payload, "raw_output": raw_text, "output_source": output_meta["output_source"]})
+                    storage.save_raw_output(req["request_id"], raw_payload)
                     storage.save_normalized(req["request_id"], normalized)
 
                 storage.append_summary_row(
@@ -765,6 +777,8 @@ def run_benchmark(
                         "prompt_version": normalized["prompt_version"],
                         "response_format_requested": normalized["response_format_requested"],
                         "response_format_used": normalized["response_format_used"],
+                        "transport": "rest",
+                        "reasoning_requested": model.reasoning,
                         "accepted_tags": normalized["accepted_tags"],
                         "accepted_ids": normalized["accepted_ids"],
                         "rejected_tags": normalized["rejected_tags"],
@@ -785,6 +799,15 @@ def run_benchmark(
                         "context_near_limit": normalized.get("context_near_limit"),
                         "context_overflow": normalized.get("context_overflow"),
                         "output_truncated": normalized.get("output_truncated"),
+                        "final_content_empty": normalized.get("final_content_empty"),
+                        "final_content_length": normalized.get("final_content_length"),
+                        "reasoning_content_present": normalized.get("reasoning_content_present"),
+                        "reasoning_content_length": normalized.get("reasoning_content_length"),
+                        "reasoning_tokens": normalized.get("reasoning_tokens"),
+                        "no_final_answer": normalized.get("no_final_answer"),
+                        "normalization_error_type": normalized.get("normalization_error_type"),
+                        "tokens_per_second": normalized.get("tokens_per_second"),
+                        "time_to_first_token_seconds": normalized.get("time_to_first_token_seconds"),
                         "gpu_memory_before_mb": gpu_before.get("memory_used_mb"),
                         "gpu_memory_after_mb": gpu_after.get("memory_used_mb"),
                         "error_type": normalized["error_type"],

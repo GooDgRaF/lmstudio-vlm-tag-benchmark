@@ -79,6 +79,37 @@ def test_request_id_deterministic_and_sensitive_to_version_and_format():
     assert four != five
 
 
+def test_request_id_changes_with_transport_and_reasoning():
+    rest_default = build_request_id(
+        model_id="m@q4",
+        model_label="m",
+        image_id="img",
+        mode="en_free",
+        prompt_version="v1",
+        response_format_requested="line_tags",
+    )
+    openai_default = build_request_id(
+        model_id="m@q4",
+        model_label="m",
+        image_id="img",
+        mode="en_free",
+        prompt_version="v1",
+        response_format_requested="line_tags",
+        transport="openai",
+    )
+    rest_on = build_request_id(
+        model_id="m@q4",
+        model_label="m",
+        image_id="img",
+        mode="en_free",
+        prompt_version="v1",
+        response_format_requested="line_tags",
+        reasoning_requested="on",
+    )
+    assert rest_default != openai_default
+    assert rest_default != rest_on
+
+
 def test_request_artifacts_and_lock(tmp_path):
     cfg = load_config(build_config(tmp_path))
     _, storage = create_run_storage(cfg, run_id="run3")
