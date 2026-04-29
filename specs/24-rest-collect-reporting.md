@@ -496,9 +496,22 @@ Do not implement in this spec:
 
 ## Agent report
 
-Fill this after implementation:
-
 - Done:
+  - Updated `collect` to preserve/read REST metadata (`transport`, `reasoning_requested`, final/reasoning diagnostic fields) with legacy fallback handling.
+  - Added REST aggregate metrics into diagnostics payload (`transport_counts`, `reasoning_requested_counts`, `no_final_answer_count`, etc.).
+  - Updated diagnostics HTML request table with REST/reasoning columns and request diagnostics link.
+  - Added matrix marker for `no final answer` in `report.html` answer cells without rendering reasoning prose.
+  - Updated core docs to reflect REST-first transport and final-vs-reasoning separation.
 - Changed files:
+  - `src/collect.py`
+  - `src/report.py`
+  - `README.md`
+  - `PROJECT_GUIDE.md`
+  - `ARCHITECTURE.md`
+  - `specs/README.md`
+  - `specs/24-rest-collect-reporting.md`
 - Checks run:
+  - `python -m pytest -q tests/test_collect.py tests/test_report.py tests/test_diagnostics.py`
+  - `python -m pytest -q`
 - Notes:
+  - Legacy artifacts without REST fields remain readable via collect/report fallbacks.

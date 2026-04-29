@@ -10,8 +10,9 @@
 изображение в ImgToTag/
   -> конфиг
   -> LM Studio model load
-  -> smoke image request
+  -> REST smoke image request
   -> шесть режимов тегирования
+  -> LM Studio REST Chat (/api/v1/chat)
   -> raw JSON
   -> normalized JSON
   -> summary.csv
@@ -151,7 +152,7 @@ models/lmstudio-models.raw.json
 
 `models.active.yaml` содержит model variants, используемые в полном конфиге. `models.excluded.yaml` хранит модели, которые не входят в benchmark, с причинами исключения. `lmstudio-models.raw.json` — исходный экспорт из LM Studio.
 
-В runtime модель загружается через `src/lmstudio_client.py`, затем запросы отправляются в загруженный `instance_id`. Это удерживает benchmark на одном явно загруженном инстансе и снижает риск неявной второй загрузки в LM Studio.
+В runtime модель загружается через `src/lmstudio_client.py`, затем запросы отправляются в загруженный `instance_id` через REST Chat. Это удерживает benchmark на одном явно загруженном инстансе и снижает риск неявной второй загрузки в LM Studio.
 
 ## Tag pools
 
@@ -233,6 +234,7 @@ results/<run_id>/
 - `report.html` также показывает компактный timing-summary и корректно печатается через браузерный print preview;
 - `summary.csv` — таблица по всем запросам;
 - `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
+- `normalized/<request_id>.json` хранит отдельно `final_content` и `reasoning_content`; теги парсятся только из `final_content`;
 - `requests/<request_id>/` — каноничные request-артефакты (`request/status/raw/normalized/diagnostics`);
 - `raw/<request_id>.json` — исходный ответ LM Studio;
 - `models/<model_label>/load.json` — фактический load config и `instance_id`;

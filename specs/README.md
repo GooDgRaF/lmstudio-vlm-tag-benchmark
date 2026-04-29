@@ -10,9 +10,9 @@ Completed specs are stored in `archive/`. Active and future specs live in this f
 
 Current active/future specs:
 
-- `22-rest-chat-transport.md` - REST Chat transport and response normalization.
-- `23-rest-runner-artifacts.md` - runner migration and REST request artifacts.
-- `24-rest-collect-reporting.md` - collect, reports, configs, and docs for REST results.
+- `22-rest-chat-transport.md` - REST Chat transport and response normalization. (completed)
+- `23-rest-runner-artifacts.md` - runner migration and REST request artifacts. (completed)
+- `24-rest-collect-reporting.md` - collect, reports, configs, and docs for REST results. (completed)
 
 Recommended implementation order from the current state:
 

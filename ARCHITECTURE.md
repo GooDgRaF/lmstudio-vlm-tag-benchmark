@@ -91,8 +91,16 @@ LM Studio отвергает лишние ключи ошибкой `unrecognize
 OpenAI-compatible API используется для запросов к модели:
 
 ```text
-POST /v1/chat/completions
+POST /v1/chat/completions (legacy compatibility path)
 ```
+
+Основной inference transport в текущем benchmark — LM Studio REST Chat:
+
+```text
+POST /api/v1/chat
+```
+
+`reasoning_content` из REST-ответа считается диагностическими данными и не используется для парсинга тегов.
 
 В конфиге это хранится раздельно:
 

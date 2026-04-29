@@ -10,6 +10,13 @@ from src.report import build_diagnostics_report, build_report
 from src.storage import SUMMARY_FIELDS
 
 
+def _to_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -131,6 +138,8 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                 "mode": req.get("mode"),
                 "prompt_version": req.get("prompt_version"),
                 "response_format_requested": req.get("response_format_requested"),
+                "transport": req.get("transport") or (normalized.get("transport") if normalized else "openai_legacy"),
+                "reasoning_requested": req.get("reasoning_requested") or (normalized.get("reasoning_requested") if normalized else ""),
             }
             if normalized is None:
                 normalized = {
@@ -148,9 +157,25 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "latency_sec": status.get("duration_sec"),
                     "error_type": status.get("error_type"),
                     "error": status.get("error"),
+                    "transport": req.get("transport") or "openai_legacy",
+                    "reasoning_requested": req.get("reasoning_requested") or "",
                 }
                 if strict:
                     raise RuntimeError(f"Missing normalized.json for {request_id}")
+            final_content_empty = normalized.get("final_content_empty")
+            if final_content_empty is None:
+                final_content_empty = bool(normalized.get("content_empty"))
+            final_content_length = normalized.get("final_content_length")
+            if final_content_length is None:
+                final_content_length = normalized.get("content_length")
+            reasoning_content_length = normalized.get("reasoning_content_length")
+            reasoning_content_present = normalized.get("reasoning_content_present")
+            if reasoning_content_present is None:
+                reasoning_content_present = bool(_to_int(reasoning_content_length, 0) > 0)
+            no_final_answer = normalized.get("no_final_answer")
+            if no_final_answer is None:
+                no_final_answer = bool(final_content_empty and reasoning_content_present)
+
             summary_rows.append(
                 {
                     **row_base,
@@ -175,6 +200,18 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "context_near_limit": normalized.get("context_near_limit"),
                     "context_overflow": normalized.get("context_overflow"),
                     "output_truncated": normalized.get("output_truncated"),
+                    "final_content_empty": final_content_empty,
+                    "final_content_length": final_content_length,
+                    "reasoning_content_present": reasoning_content_present,
+                    "reasoning_content_length": reasoning_content_length,
+                    "reasoning_tokens": normalized.get("reasoning_tokens"),
+                    "no_final_answer": no_final_answer,
+                    "normalization_error_type": normalized.get("normalization_error_type"),
+                    "tokens_per_second": normalized.get("tokens_per_second"),
+                    "time_to_first_token_seconds": normalized.get("time_to_first_token_seconds"),
+                    "content_empty": normalized.get("content_empty", final_content_empty),
+                    "content_length": normalized.get("content_length", final_content_length),
+                    "reasoning_content_used": normalized.get("reasoning_content_used", False),
                     "gpu_memory_before_mb": None,
                     "gpu_memory_after_mb": None,
                     "error_type": normalized.get("error_type") or status.get("error_type"),
@@ -197,12 +234,23 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "latency_sec": normalized.get("latency_sec"),
                     "response_format_requested": req.get("response_format_requested"),
                     "response_format_used": normalized.get("response_format_used"),
+                    "transport": row_base["transport"],
+                    "reasoning_requested": row_base["reasoning_requested"],
                     "parse_ok": bool(normalized.get("parse_ok")),
                     "schema_ok": bool(normalized.get("schema_ok")),
                     "pool_ok": bool(normalized.get("pool_ok")),
                     "pool_violations": int(normalized.get("pool_violations") or 0),
                     "error_type": normalized.get("error_type"),
                     "error": normalized.get("error"),
+                    "final_content_empty": final_content_empty,
+                    "reasoning_content_present": reasoning_content_present,
+                    "no_final_answer": no_final_answer,
+                    "normalization_error_type": normalized.get("normalization_error_type"),
+                    "reasoning_tokens": normalized.get("reasoning_tokens"),
+                    "reasoning_content_length": reasoning_content_length,
+                    "final_content_length": final_content_length,
+                    "tokens_per_second": normalized.get("tokens_per_second"),
+                    "time_to_first_token_seconds": normalized.get("time_to_first_token_seconds"),
                     "accepted_tag_count": len(normalized.get("accepted_tags") or []),
                     "rejected_tag_count": len(normalized.get("rejected_tags") or []),
                     "rejected_id_count": len(normalized.get("rejected_ids") or []),
@@ -335,9 +383,38 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
         "pools": run_config.get("pools") if isinstance(run_config, dict) else {},
         "models": run_config.get("models") if isinstance(run_config, dict) else [],
         "requests": request_rows,
+        "rest_summary": {
+            "transport_counts": {},
+            "reasoning_requested_counts": {},
+            "no_final_answer_count": 0,
+            "reasoning_content_present_count": 0,
+            "reasoning_tokens_total": 0,
+        },
         "warnings": warnings,
         "errors_log_excerpt": _read_errors_log(run_dir)[:8000],
     }
+    rest_summary = diagnostics_payload["rest_summary"]
+    for row in request_rows:
+        if not isinstance(row, dict):
+            continue
+        transport = str(row.get("transport") or "")
+        if transport:
+            rest_summary["transport_counts"][transport] = rest_summary["transport_counts"].get(transport, 0) + 1
+        reasoning_requested = str(row.get("reasoning_requested") or "")
+        if reasoning_requested:
+            rest_summary["reasoning_requested_counts"][reasoning_requested] = (
+                rest_summary["reasoning_requested_counts"].get(reasoning_requested, 0) + 1
+            )
+        if bool(row.get("no_final_answer")):
+            rest_summary["no_final_answer_count"] += 1
+        if bool(row.get("reasoning_content_present")):
+            rest_summary["reasoning_content_present_count"] += 1
+        try:
+            tokens = int(row.get("reasoning_tokens")) if row.get("reasoning_tokens") is not None else None
+        except (TypeError, ValueError):
+            tokens = None
+        if isinstance(tokens, int):
+            rest_summary["reasoning_tokens_total"] += tokens
     diagnostics_path = run_dir / "diagnostics.json"
     diagnostics_path.write_text(json.dumps(diagnostics_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 

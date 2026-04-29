@@ -129,6 +129,8 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     rejected_ids = cell.get("rejected_ids") or []
     accepted_class = "free" if mode.endswith("_free") else "ok"
     chips: list[str] = []
+    if str(cell.get("no_final_answer") or "").lower() in {"true", "1", "yes"}:
+        chips.append(_render_chip("no final answer", "warn"))
     chips.extend(_render_chip(tag, accepted_class) for tag in accepted)
     chips.extend(_render_chip(tag, "warn") for tag in rejected_tags)
     chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
@@ -219,6 +221,7 @@ def build_report(run_dir: Path) -> Path:
             "accepted_tags": _parse_json_cell(row.get("accepted_tags")),
             "rejected_tags": _parse_json_cell(row.get("rejected_tags")),
             "rejected_ids": _parse_json_cell(row.get("rejected_ids")),
+            "no_final_answer": row.get("no_final_answer") or "",
             "error_type": row.get("error_type") or "",
             "error": row.get("error") or "",
             "status": row.get("status") or "",
@@ -510,6 +513,8 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
             f"<td>{_escape(item.get('latency_sec'))}</td>"
             f"<td>{_escape(item.get('response_format_requested'))}</td>"
             f"<td>{_escape(item.get('response_format_used'))}</td>"
+            f"<td>{_escape(item.get('transport'))}</td>"
+            f"<td>{_escape(item.get('reasoning_requested'))}</td>"
             f"<td>{_yn(item.get('parse_ok'))}</td>"
             f"<td>{_yn(item.get('schema_ok'))}</td>"
             f"<td>{_yn(item.get('pool_ok'))}</td>"
@@ -526,12 +531,18 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
             f"<td>{_escape(item.get('rejected_tag_count'))}</td>"
             f"<td>{_escape(item.get('rejected_id_count'))}</td>"
             f"<td>{_escape(item.get('output_source'))}</td>"
-            f"<td>{_yn(item.get('content_empty'))}</td>"
-            f"<td>{_yn(item.get('reasoning_content_used'))}</td>"
-            f"<td>{_escape(item.get('content_length'))}</td>"
+            f"<td>{_yn(item.get('final_content_empty', item.get('content_empty')))}</td>"
+            f"<td>{_yn(item.get('reasoning_content_present'))}</td>"
+            f"<td>{_yn(item.get('no_final_answer'))}</td>"
+            f"<td>{_escape(item.get('normalization_error_type'))}</td>"
+            f"<td>{_escape(item.get('final_content_length', item.get('content_length')))}</td>"
             f"<td>{_escape(item.get('reasoning_content_length'))}</td>"
+            f"<td>{_escape(item.get('reasoning_tokens'))}</td>"
+            f"<td>{_escape(item.get('tokens_per_second'))}</td>"
+            f"<td>{_escape(item.get('time_to_first_token_seconds'))}</td>"
             f"<td><a href='{_escape(item.get('raw_path'))}'>raw</a></td>"
             f"<td><a href='{_escape(item.get('normalized_path'))}'>normalized</a></td>"
+            f"<td><a href='{_escape(item.get('request_diagnostics_path'))}'>request diag</a></td>"
             "</tr>"
         )
 
@@ -607,7 +618,7 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
   <div class="wrap"><table><thead><tr><th>model</th><th>params</th><th>quant</th><th>load ok</th><th>load sec</th><th>smoke</th><th>req</th><th>errors</th><th>pool viol</th><th>avg</th><th>median</th><th>min</th><th>max</th><th>parse rate</th><th>schema rate</th><th>pool rate</th><th>ctx req</th><th>ctx actual</th><th>unload ok</th></tr></thead><tbody>{''.join(model_rows)}</tbody></table></div>
 
   <h2>Request diagnostics</h2>
-  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>output src</th><th>content empty</th><th>reasoning used</th><th>content len</th><th>reasoning len</th><th>raw</th><th>normalized</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
+  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>transport</th><th>reasoning req</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>output src</th><th>final empty</th><th>reasoning present</th><th>no final</th><th>norm err</th><th>final len</th><th>reasoning len</th><th>reasoning tok</th><th>tok/sec</th><th>ttft sec</th><th>raw</th><th>normalized</th><th>request diag</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
 
   <h2>Pool diagnostics</h2>
   <div class="wrap"><table><thead><tr><th>pool</th><th>path</th><th>type</th><th>tag count</th><th>entry count</th><th>id prefixes</th><th>sha256</th></tr></thead><tbody>{''.join(pool_rows)}</tbody></table></div>
