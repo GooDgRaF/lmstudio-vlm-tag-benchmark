@@ -28,6 +28,7 @@ class ModelConfig:
     quant: str | None
     quant_bits: int | None
     max_context_length: int | None
+    reasoning: str = "default"
     display_name: str | None = None
     architecture: str | None = None
     size_bytes: int | None = None
@@ -232,6 +233,7 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
                 id=str(entry.get("id", "")),
                 base_model_id=str(entry.get("base_model_id", "")),
                 label=str(entry.get("label", "")),
+                reasoning=str(entry.get("reasoning", "default")),
                 params=entry.get("params"),
                 quant=entry.get("quant"),
                 quant_bits=_coerce_int(entry.get("quant_bits")),

@@ -227,3 +227,126 @@ class LMStudioClient:
             if response_format is not None and _looks_like_response_format_error(str(exc)):
                 raise ResponseFormatUnsupportedError(str(exc)) from exc
             raise
+
+    def chat_rest(
+        self,
+        *,
+        model_id: str,
+        input_items: list[dict[str, Any]],
+        temperature: float,
+        top_p: float,
+        max_output_tokens: int,
+        reasoning: str = "default",
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "model": model_id,
+            "input": [dict(item) for item in input_items],
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_output_tokens": max_output_tokens,
+            "store": False,
+        }
+        if reasoning in {"on", "off"}:
+            body["reasoning"] = reasoning
+        return self._request("POST", f"{self.api_base_url}/chat", json=body)
+
+
+def build_rest_input_items(prompt: str, image_data_url: str) -> list[dict[str, Any]]:
+    return [
+        {"type": "text", "content": prompt},
+        {"type": "image", "data_url": image_data_url},
+    ]
+
+
+def normalize_rest_chat_response(
+    payload: dict[str, Any],
+    *,
+    reasoning_requested: str,
+    max_output_tokens: int | None,
+) -> dict[str, Any]:
+    output = payload.get("output") if isinstance(payload, dict) else None
+    if not isinstance(output, list):
+        final_content = ""
+        reasoning_content = ""
+        output_source = "bad_rest_response"
+        no_final_answer = True
+        bad_rest_response = True
+        normalization_error_type: str | None = "bad_rest_response"
+    else:
+        reasoning_parts: list[str] = []
+        final_content = ""
+        message_seen = False
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            item_type = item.get("type")
+            content = item.get("content")
+            if item_type == "reasoning" and content is not None:
+                reasoning_parts.append(str(content))
+            if item_type == "message":
+                message_seen = True
+                text = "" if content is None else str(content)
+                if not final_content and text.strip():
+                    final_content = text
+
+        reasoning_content = "\n".join(reasoning_parts)
+        bad_rest_response = False
+        if not output:
+            output_source = "empty"
+            no_final_answer = True
+            normalization_error_type = "empty_rest_output"
+        elif message_seen:
+            output_source = "message"
+            no_final_answer = not bool(final_content.strip())
+            normalization_error_type = "no_final_answer" if no_final_answer else None
+        else:
+            output_source = "empty"
+            no_final_answer = True
+            normalization_error_type = "no_final_answer"
+
+    stats = payload.get("stats") if isinstance(payload, dict) else None
+    prompt_tokens = stats.get("input_tokens") if isinstance(stats, dict) else None
+    completion_tokens = stats.get("total_output_tokens") if isinstance(stats, dict) else None
+    reasoning_tokens = stats.get("reasoning_output_tokens") if isinstance(stats, dict) else None
+    tokens_per_second = stats.get("tokens_per_second") if isinstance(stats, dict) else None
+    time_to_first_token_seconds = stats.get("time_to_first_token_seconds") if isinstance(stats, dict) else None
+    total_tokens = None
+    if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+        total_tokens = prompt_tokens + completion_tokens
+
+    finish_reason = payload.get("finish_reason") if isinstance(payload, dict) else None
+    output_truncated = False
+    if isinstance(finish_reason, str):
+        output_truncated = finish_reason == "length"
+    elif isinstance(completion_tokens, int) and isinstance(max_output_tokens, int):
+        output_truncated = completion_tokens >= max_output_tokens
+
+    final_content_empty = not bool(final_content.strip())
+    result = {
+        "transport": "rest",
+        "reasoning_requested": reasoning_requested,
+        "final_content": final_content,
+        "reasoning_content": reasoning_content,
+        "output_source": output_source,
+        "final_content_empty": final_content_empty,
+        "reasoning_content_present": bool(reasoning_content.strip()),
+        "final_content_length": len(final_content),
+        "reasoning_content_length": len(reasoning_content),
+        "no_final_answer": no_final_answer,
+        "bad_rest_response": bad_rest_response,
+        "normalization_error_type": normalization_error_type,
+        "finish_reason": finish_reason,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "reasoning_tokens": reasoning_tokens,
+        "tokens_per_second": tokens_per_second,
+        "time_to_first_token_seconds": time_to_first_token_seconds,
+        "output_truncated": output_truncated,
+        "raw_response": payload,
+        "raw_output": final_content,
+        "content_empty": final_content_empty,
+        "content_length": len(final_content),
+        "reasoning_content_used": False,
+    }
+    return result

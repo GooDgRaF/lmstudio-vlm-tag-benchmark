@@ -76,14 +76,24 @@ def extract_usage_diagnostics(
     error_ratio: float,
 ) -> dict[str, Any]:
     usage = completion_payload.get("usage") if isinstance(completion_payload, dict) else None
+    stats = completion_payload.get("stats") if isinstance(completion_payload, dict) else None
     choices = completion_payload.get("choices") if isinstance(completion_payload, dict) else None
     finish_reason = None
     if isinstance(choices, list) and choices and isinstance(choices[0], dict):
         finish_reason = choices[0].get("finish_reason")
+    if finish_reason is None and isinstance(completion_payload, dict):
+        finish_reason = completion_payload.get("finish_reason")
 
-    prompt_tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
-    completion_tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
-    total_tokens = usage.get("total_tokens") if isinstance(usage, dict) else None
+    if isinstance(stats, dict):
+        prompt_tokens = stats.get("input_tokens")
+        completion_tokens = stats.get("total_output_tokens")
+        total_tokens = None
+        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+    else:
+        prompt_tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
+        completion_tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
+        total_tokens = usage.get("total_tokens") if isinstance(usage, dict) else None
 
     context_near_limit = False
     context_overflow = False
@@ -95,6 +105,12 @@ def extract_usage_diagnostics(
             context_near_limit = True
 
     output_truncated = finish_reason == "length"
+    if finish_reason is None and isinstance(completion_tokens, int):
+        max_output_tokens = None
+        if isinstance(completion_payload, dict):
+            max_output_tokens = completion_payload.get("max_output_tokens")
+        if isinstance(max_output_tokens, int):
+            output_truncated = completion_tokens >= max_output_tokens
     return {
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,

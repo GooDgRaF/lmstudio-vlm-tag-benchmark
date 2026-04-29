@@ -49,6 +49,7 @@ def validate_config(cfg: BenchmarkConfig) -> None:
         raise ValidationError("Config must include at least one model")
 
     seen_labels: set[str] = set()
+    allowed_reasoning = {"default", "on", "off"}
     for model in cfg.models:
         required_model_fields = {
             "id": model.id,
@@ -66,6 +67,12 @@ def validate_config(cfg: BenchmarkConfig) -> None:
         if model.label in seen_labels:
             raise ValidationError(f"Duplicate model label: {model.label}")
         seen_labels.add(model.label)
+
+        if model.reasoning not in allowed_reasoning:
+            raise ValidationError(
+                f"Unsupported model reasoning value '{model.reasoning}' for model {model.label}. "
+                "Expected default, on, or off."
+            )
 
         if cfg.load.context_length and model.max_context_length:
             if cfg.load.context_length > model.max_context_length:

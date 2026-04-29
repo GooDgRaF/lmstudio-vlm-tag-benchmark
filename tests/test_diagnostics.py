@@ -94,3 +94,15 @@ def test_detect_git_commit_best_effort(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: FakeProc())
     assert detect_git_commit() is None
+
+
+def test_rest_stats_usage_mapping_and_truncation_inference():
+    payload = {
+        "stats": {"input_tokens": 20, "total_output_tokens": 64},
+        "max_output_tokens": 64,
+    }
+    out = extract_usage_diagnostics(payload, actual_context_length=100, warning_ratio=0.85, error_ratio=0.97)
+    assert out["prompt_tokens"] == 20
+    assert out["completion_tokens"] == 64
+    assert out["total_tokens"] == 84
+    assert out["output_truncated"] is True

@@ -477,9 +477,27 @@ Do not implement in this spec:
 
 ## Agent report
 
-Fill this after implementation:
-
 - Done:
+  - Added `ModelConfig.reasoning` with default `default` and validation for `default|on|off`.
+  - Added REST transport helpers: `build_rest_input_items`, `LMStudioClient.chat_rest`, `normalize_rest_chat_response`.
+  - Added REST stats handling in diagnostics usage extraction.
+  - Updated smoke/example configs with explicit `reasoning` and comment for `validation.use_response_format`.
+  - Added/updated unit tests for reasoning validation, REST request shape, REST response normalization, and REST stats mapping.
 - Changed files:
+  - `src/config.py`
+  - `src/validator.py`
+  - `src/lmstudio_client.py`
+  - `src/diagnostics.py`
+  - `config.smoke.yaml`
+  - `config.example.yaml`
+  - `tests/test_config.py`
+  - `tests/test_validator.py`
+  - `tests/test_lmstudio_client.py`
+  - `tests/test_diagnostics.py`
+  - `specs/22-rest-chat-transport.md`
 - Checks run:
+  - `python -m pytest -q tests/test_config.py tests/test_validator.py tests/test_lmstudio_client.py tests/test_diagnostics.py`
+  - `python main.py validate-config --config config.smoke.yaml`
+  - `python main.py dry-run --config config.smoke.yaml`
 - Notes:
+  - `chat_completion` was kept intact for compatibility; REST additions are additive in this spec.

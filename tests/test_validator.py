@@ -63,3 +63,35 @@ def test_missing_pool_file_fails(tmp_path):
     cfg = load_config(path)
     with pytest.raises(ValidationError, match="Pool file does not exist"):
         validate_config(cfg)
+
+
+@pytest.mark.parametrize("reasoning", ["default", "on", "off"])
+def test_reasoning_values_allowed(tmp_path, reasoning):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["models"][0]["reasoning"] = reasoning
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    validate_config(cfg)
+
+
+@pytest.mark.parametrize("reasoning", ["low", "high", "custom"])
+def test_reasoning_values_rejected(tmp_path, reasoning):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["models"][0]["reasoning"] = reasoning
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    with pytest.raises(ValidationError, match="Unsupported model reasoning value"):
+        validate_config(cfg)
+
+
+def test_duplicate_model_ids_allowed_if_labels_unique(tmp_path):
+    path = build_config(tmp_path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    copy = dict(data["models"][0])
+    copy["label"] = "m1_q4_variant2"
+    data["models"].append(copy)
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(path)
+    validate_config(cfg)
