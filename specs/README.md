@@ -10,22 +10,15 @@ Completed specs are stored in `archive/`. Active and future specs live in this f
 
 Current active/future specs:
 
-- `14-html-answer-matrix.md` — primary answer matrix report.
-- `15-diagnostics-data-contract.md` — run-level `diagnostics.json`.
-- `16-diagnostics-html-report.md` — human-readable `diagnostics.html`.
-- `17-line-based-prompt-modernization.md` — switch active prompts to line-based tag output and prompt v2.
-- `18-resumable-request-artifacts.md` — durable per-request artifacts and resume modes.
-- `19-collect-merge-from-artifacts.md` — rebuild summary/diagnostics/reports from artifacts.
-- `20-report-statistics-and-print.md` — top timing summary, final tag colors, print-friendly report.
-- `21-accumulate-result-mode.md` — append-only repeated attempts for the same logical request.
+- `22-rest-chat-transport.md` - REST Chat transport and response normalization.
+- `23-rest-runner-artifacts.md` - runner migration and REST request artifacts.
+- `24-rest-collect-reporting.md` - collect, reports, configs, and docs for REST results.
 
 Recommended implementation order from the current state:
 
-1. `17-line-based-prompt-modernization.md`
-2. `18-resumable-request-artifacts.md`
-3. `19-collect-merge-from-artifacts.md`
-4. `20-report-statistics-and-print.md`
-5. `21-accumulate-result-mode.md`
+1. `22-rest-chat-transport.md`
+2. `23-rest-runner-artifacts.md`
+3. `24-rest-collect-reporting.md`
 
 ## Workflow
 
