@@ -126,6 +126,9 @@ def test_run_with_explicit_run_id_and_manifest_reuse(tmp_path, monkeypatch):
     manifest2 = json.loads((run_dir2 / "run_manifest.json").read_text(encoding="utf-8"))
     assert run_dir == run_dir2
     assert manifest1["request_count"] == manifest2["request_count"]
+    request_id = manifest2["requests"][0]["request_id"]
+    status = json.loads((run_dir2 / "requests" / request_id / "status.json").read_text(encoding="utf-8"))
+    assert status["status"] == "success"
 
 
 def test_stale_lock_fails_without_force_lock(tmp_path, monkeypatch):

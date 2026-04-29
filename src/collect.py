@@ -39,6 +39,13 @@ def _read_errors_log(run_dir: Path) -> str:
         return ""
 
 
+def _effective_status(status: dict[str, Any], normalized: dict[str, Any] | None) -> str:
+    status_name = str(status.get("status") or "")
+    if status_name == "skipped" and normalized is not None:
+        return "failed" if normalized.get("error_type") else "success"
+    return status_name
+
+
 def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = False) -> dict[str, Any]:
     manifest_path = run_dir / "run_manifest.json"
     if not manifest_path.exists():
@@ -102,7 +109,7 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
         ) -> None:
             nonlocal attempt_count, successful_attempt_count, failed_attempt_count
             attempt_count += 1
-            status_name = str(status.get("status") or "")
+            status_name = _effective_status(status, normalized)
             if status_name == "success":
                 successful_attempt_count += 1
             elif status_name == "failed":
@@ -256,7 +263,7 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             if strict:
                 raise RuntimeError(f"Missing status artifact for {request_id}")
             continue
-        status_name = str(status.get("status") or "")
+        status_name = _effective_status(status, normalized)
         if status_name == "running":
             incomplete += 1
             running_or_incomplete_attempt_count += 1

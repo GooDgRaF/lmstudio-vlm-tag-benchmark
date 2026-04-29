@@ -99,6 +99,20 @@ def test_collect_rebuilds_summary_and_diagnostics(tmp_path):
     assert diagnostics["run"]["completed_request_count"] == 1
 
 
+def test_collect_treats_skipped_status_as_existing_result(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    _write_json(run_dir / "requests" / "req1" / "status.json", {"status": "skipped", "attempt": 1})
+
+    result = collect_run(run_dir)
+
+    import csv
+
+    rows = list(csv.DictReader(result["summary_path"].open(encoding="utf-8-sig", newline="")))
+    assert rows[0]["status"] == "success"
+    diagnostics = json.loads(result["diagnostics_path"].read_text(encoding="utf-8"))
+    assert diagnostics["run"]["successful_attempt_count"] == 1
+
+
 def test_collect_marks_incomplete_request(tmp_path):
     run_dir = _prepare_run(tmp_path)
     (run_dir / "requests" / "req1" / "status.json").unlink()

@@ -513,21 +513,19 @@ def run_benchmark(
                 save_state("running", req)
                 decision = _status_decision(cfg, storage.read_request_status(req["request_id"]))
                 if decision == "skip":
-                    skip_status = _request_status_payload(
-                        request=req,
-                        status="skipped",
-                        started_at=now_timestamp(),
-                        finished_at=now_timestamp(),
-                        duration_sec=0.0,
-                        error_type=None,
-                        error=None,
-                    )
                     if is_accumulate:
+                        skip_status = _request_status_payload(
+                            request=req,
+                            status="skipped",
+                            started_at=now_timestamp(),
+                            finished_at=now_timestamp(),
+                            duration_sec=0.0,
+                            error_type=None,
+                            error=None,
+                        )
                         attempt_no = storage.next_attempt_number(req["request_id"])
                         skip_status["attempt"] = attempt_no
                         storage.save_attempt_status(req["request_id"], attempt_no, skip_status)
-                    else:
-                        storage.save_request_status(req["request_id"], skip_status)
                     skipped_count += 1
                     continue
 
