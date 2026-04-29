@@ -462,7 +462,7 @@ def run_benchmark(
                     client,
                     loaded.instance_id,
                     model.reasoning,
-                    max(64, min(cfg.generation.max_tokens, 256)),
+                    max(64, cfg.generation.max_tokens),
                     images[0] if images else None,
                 )
                 storage.save_model_metadata(model.label, "smoke_test.json", smoke)

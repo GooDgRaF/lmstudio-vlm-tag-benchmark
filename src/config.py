@@ -288,7 +288,7 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
         generation=GenerationConfig(
             temperature=float(generation_raw.get("temperature", 0.0)),
             top_p=float(generation_raw.get("top_p", 1.0)),
-            max_tokens=int(generation_raw.get("max_tokens", 256)),
+            max_tokens=int(generation_raw.get("max_tokens", 4096)),
         ),
         load=LoadConfig(
             context_length=_coerce_int(load_raw.get("context_length")),

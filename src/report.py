@@ -312,6 +312,8 @@ def build_report(run_dir: Path) -> Path:
         thumb_rel = _thumbnail_rel_path(run_dir, image_id)
         thumb_abs = run_dir / thumb_rel
         thumb_ok = _ensure_thumbnail(image_path, thumb_abs, size=thumbnail_size) if image_path else False
+        if not thumb_ok and thumb_abs.exists():
+            thumb_ok = True
         thumb_html = (
             f"<img src='{html.escape(thumb_rel.as_posix())}' alt='{html.escape(image_id)}' class='thumb' />"
             if thumb_ok

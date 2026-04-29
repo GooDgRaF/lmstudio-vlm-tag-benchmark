@@ -30,7 +30,7 @@ models:
     max_context_length: 262144
 
 input:
-  image_dir: "ImgToTag"
+  image_dir: "ImgToTag_largest"
   recursive: false
   extensions: [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
 
@@ -50,10 +50,10 @@ pools:
 generation:
   temperature: 0.0
   top_p: 1.0
-  max_tokens: 2048
+  max_tokens: 4096
 
 load:
-  context_length: 16384
+  context_length: 8192
   flash_attention: true
   offload_kv_cache_to_gpu: true
   echo_load_config: true

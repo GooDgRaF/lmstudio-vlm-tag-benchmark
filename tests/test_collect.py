@@ -196,3 +196,20 @@ def test_collect_preserves_rest_reasoning_fields(tmp_path):
     assert row["reasoning_requested"] == "on"
     assert row["reasoning_tokens"] == "25"
     assert row["output_truncated"].lower() == "true"
+
+
+def test_collect_fills_image_path_from_request_descriptor(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    _write_json(
+        run_dir / "requests" / "req1" / "request.json",
+        {
+            "request_id": "req1",
+            "image_path": "C:/tmp/image.jpg",
+            "image_rel_path": "img1.jpg",
+        },
+    )
+    result = collect_run(run_dir)
+    import csv
+
+    row = next(csv.DictReader(result["summary_path"].open(encoding="utf-8-sig", newline="")))
+    assert row["image_path"] == "C:/tmp/image.jpg"

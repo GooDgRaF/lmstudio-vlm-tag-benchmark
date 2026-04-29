@@ -103,6 +103,9 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             continue
         request_id = str(req.get("request_id") or "")
         request_dir = run_dir / "requests" / request_id
+        request_descriptor = _load_json(request_dir / "request.json") or {}
+        if not isinstance(request_descriptor, dict):
+            request_descriptor = {}
         model_label = str(req.get("model_label") or "")
         model_info = model_map.get(model_label, {})
 
@@ -133,8 +136,8 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                 "quant": model_info.get("quant"),
                 "quant_bits": model_info.get("quant_bits"),
                 "image_id": req.get("image_id"),
-                "image_path": req.get("image_path"),
-                "image_rel_path": req.get("image_rel_path"),
+                "image_path": req.get("image_path") or request_descriptor.get("image_path"),
+                "image_rel_path": req.get("image_rel_path") or request_descriptor.get("image_rel_path"),
                 "mode": req.get("mode"),
                 "prompt_version": req.get("prompt_version"),
                 "response_format_requested": req.get("response_format_requested"),
