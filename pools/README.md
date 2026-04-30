@@ -47,14 +47,14 @@ id<TAB>tag<TAB>explanation
 Example:
 
 ```text
-RU001	Общий	Безопасно для всех.
+RU001	РћР±С‰РёР№	Р‘РµР·РѕРїР°СЃРЅРѕ РґР»СЏ РІСЃРµС….
 EN001	General	Safe for all audiences.
 ```
 
 Prompt-ready text is generated at runtime from TSV in this format:
 
 ```text
-RU001	Общий - Безопасно для всех.
+RU001	РћР±С‰РёР№ - Р‘РµР·РѕРїР°СЃРЅРѕ РґР»СЏ РІСЃРµС….
 EN001	General - Safe for all audiences.
 ```
 
