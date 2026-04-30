@@ -57,6 +57,8 @@ SUMMARY_FIELDS = [
     "reasoning_content_present",
     "reasoning_content_length",
     "reasoning_tokens",
+    "reasoning_leak_detected",
+    "reasoning_leak_recovered",
     "no_final_answer",
     "normalization_error_type",
     "tokens_per_second",

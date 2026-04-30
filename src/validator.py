@@ -236,6 +236,92 @@ def _looks_like_reasoning_line(value: str) -> bool:
     return False
 
 
+def _detect_inline_reasoning(raw_output: str) -> bool:
+    lower = raw_output.lower()
+    strong_markers = [
+        "the user wants",
+        "analyze the image",
+        "analyse the image",
+        "identify obvious features",
+        "review and finalize",
+        "review against rules",
+        "final selection",
+        "final list construction",
+        "tags selected",
+        "self-correction",
+        "let's refine",
+        "let's use",
+    ]
+    if any(marker in lower for marker in strong_markers):
+        return True
+    reasoning_lines = 0
+    for raw_line in raw_output.splitlines():
+        value = _strip_line_markup(raw_line)
+        if value.lower().strip(" :：") in {"tags", "tag", "теги", "тег"}:
+            continue
+        if _looks_like_reasoning_line(value):
+            reasoning_lines += 1
+    return reasoning_lines >= 2
+
+
+def _line_value_candidates(raw_line: str) -> list[str]:
+    value = _strip_line_markup(raw_line)
+    if not value:
+        return []
+    if ":" in value:
+        _prefix, tail = value.split(":", 1)
+        comma_parts = [part.strip(" \t\r\n.,;") for part in tail.split(",")]
+        comma_parts = [part for part in comma_parts if part]
+        if len(comma_parts) >= 2:
+            return comma_parts
+    return [value]
+
+
+def _extract_bottom_valid_tags(raw_output: str, allowed: set[str], max_tags: int) -> list[str]:
+    group: list[str] = []
+    seen: set[str] = set()
+    started = False
+    for raw_line in reversed(raw_output.splitlines()):
+        if not raw_line.strip():
+            if started:
+                break
+            continue
+        values = _line_value_candidates(raw_line)
+        valid = [value for value in values if value in allowed]
+        if valid:
+            started = True
+            for value in reversed(valid):
+                if value not in seen:
+                    seen.add(value)
+                    group.append(value)
+            continue
+        if started:
+            break
+    return list(reversed(group))[:max_tags]
+
+
+def _extract_bottom_valid_ids(raw_output: str, valid_ids: set[str], max_tags: int) -> list[str]:
+    group: list[str] = []
+    seen: set[str] = set()
+    started = False
+    for raw_line in reversed(raw_output.splitlines()):
+        if not raw_line.strip():
+            if started:
+                break
+            continue
+        ids = [item for item in re.findall(r"\b(?:RU|EN)\d+\b", raw_line) if item in valid_ids]
+        if ids:
+            started = True
+            for value in reversed(ids):
+                if value not in seen:
+                    seen.add(value)
+                    group.append(value)
+            continue
+        if started:
+            break
+    return list(reversed(group))[:max_tags]
+
+
 def _split_inline_tag_list(value: str) -> list[str]:
     if ":" not in value:
         return []
@@ -429,6 +515,8 @@ def normalize_model_output(
 
     raw_tags = parsed.tags.copy()
     raw_ids = parsed.ids.copy()
+    reasoning_leak_detected = _detect_inline_reasoning(raw_output)
+    reasoning_leak_recovered = False
     accepted_tags: list[str] = []
     accepted_ids: list[str] = []
     rejected_tags: list[str] = []
@@ -444,6 +532,12 @@ def normalize_model_output(
             id_to_tag = pools.ru_explained_id_to_tag if language == "ru" else pools.en_explained_id_to_tag
             tag_set = pools.ru_explained_tag_set if language == "ru" else pools.en_explained_tag_set
             id_pattern = r"^RU\d+$" if language == "ru" else r"^EN\d+$"
+            if reasoning_leak_detected:
+                bottom_ids = _extract_bottom_valid_ids(raw_output, set(id_to_tag.keys()), max_tags)
+                if bottom_ids:
+                    raw_ids = bottom_ids
+                    raw_tags = []
+                    reasoning_leak_recovered = True
 
             for value in raw_ids[:max_tags]:
                 if re.match(id_pattern, value) and value in id_to_tag:
@@ -461,6 +555,11 @@ def normalize_model_output(
             pool_ok = len(rejected_ids) == 0 and len(rejected_tags) == 0
         elif mode.endswith("_pool"):
             allowed = pools.ru_plain_set if language == "ru" else pools.en_plain_set
+            if reasoning_leak_detected:
+                bottom_tags = _extract_bottom_valid_tags(raw_output, allowed, max_tags)
+                if bottom_tags:
+                    raw_tags = bottom_tags
+                    reasoning_leak_recovered = True
             for tag in raw_tags[:max_tags]:
                 if tag in allowed:
                     accepted_tags.append(tag)
@@ -506,6 +605,8 @@ def normalize_model_output(
         "line_fallback_used": parsed.line_fallback_used,
         "pool_ok": pool_ok,
         "pool_violations": len(rejected_tags) + len(rejected_ids),
+        "reasoning_leak_detected": reasoning_leak_detected,
+        "reasoning_leak_recovered": reasoning_leak_recovered,
         "error_type": error_type,
         "error": error,
     }

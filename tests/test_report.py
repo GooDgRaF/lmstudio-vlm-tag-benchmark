@@ -50,6 +50,8 @@ def _write_summary(path, rows):
         "reasoning_content_present",
         "reasoning_content_length",
         "reasoning_tokens",
+        "reasoning_leak_detected",
+        "reasoning_leak_recovered",
         "no_final_answer",
         "normalization_error_type",
         "tokens_per_second",
@@ -397,6 +399,8 @@ def test_report_uses_separate_error_color_and_hides_reasoning_prose(tmp_path):
                 "context_overflow": "false",
                 "output_truncated": "false",
                 "no_final_answer": "true",
+                "reasoning_leak_detected": "true",
+                "reasoning_leak_recovered": "true",
                 "error_type": "no_final_answer",
                 "error": "REST response did not contain a non-empty final message",
             }
@@ -405,6 +409,7 @@ def test_report_uses_separate_error_color_and_hides_reasoning_prose(tmp_path):
 
     html = build_report(run_dir).read_text(encoding="utf-8")
     assert "class='chip error'>no final answer" in html
+    assert "class='chip error'>thought anyway" in html
     assert "class='chip warn'>OutsidePool" in html
     assert "Thinking Process:" not in html
 
@@ -552,9 +557,11 @@ def test_report_top_summary_and_print_css(tmp_path):
         encoding="utf-8",
     )
     html = build_report(run_dir).read_text(encoding="utf-8")
-    assert "completion: partial" in html
-    assert "completed: 1/3" in html
-    assert "avg req latency" in html
+    assert "run: run" in html
+    assert "completion: partial" not in html
+    assert "avg req latency" not in html
+    assert "total request latency / average latency per unique image" in html
+    assert "1.25s / 1.25s" in html
     assert "@media print" in html
 
 

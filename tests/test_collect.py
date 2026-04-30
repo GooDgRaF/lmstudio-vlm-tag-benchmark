@@ -213,3 +213,85 @@ def test_collect_fills_image_path_from_request_descriptor(tmp_path):
 
     row = next(csv.DictReader(result["summary_path"].open(encoding="utf-8-sig", newline="")))
     assert row["image_path"] == "C:/tmp/image.jpg"
+
+
+def test_collect_reparses_raw_with_current_parser(tmp_path):
+    run_dir = _prepare_run(tmp_path)
+    pools = tmp_path / "pools"
+    pools.mkdir()
+    (pools / "en_plain.txt").write_text("cat\ndog\n", encoding="utf-8")
+    (pools / "ru_plain.txt").write_text("кот\n", encoding="utf-8")
+    (pools / "en_explained_ids.tsv").write_text("EN001\tGeneral\tSafe\n", encoding="utf-8")
+    (pools / "ru_explained_ids.tsv").write_text("RU001\tОбщий\tБезопасно\n", encoding="utf-8")
+    (run_dir / "run_config.yaml").write_text(
+        "\n".join(
+            [
+                "pools:",
+                f"  ru_plain: {pools / 'ru_plain.txt'}",
+                f"  en_plain: {pools / 'en_plain.txt'}",
+                f"  ru_explained: {pools / 'ru_explained_ids.tsv'}",
+                f"  en_explained: {pools / 'en_explained_ids.tsv'}",
+                "limits:",
+                "  max_tags: 10",
+                "validation:",
+                "  allow_json_extraction: true",
+                "  allow_line_fallback: true",
+                "  drop_tags_not_in_pool: true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    manifest["requests"][0]["mode"] = "en_pool"
+    manifest["requests"][0]["response_format_requested"] = "line_tags"
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_json(
+        run_dir / "requests" / "req1" / "status.json",
+        {"status": "failed", "attempt": 1, "error_type": "pool_validation_failed"},
+    )
+    _write_json(
+        run_dir / "requests" / "req1" / "raw.json",
+        {
+            "final_content": (
+                "The user wants me to generate image tags.\n"
+                "1. **Analyze the image:** cat and dog are visible.\n"
+                "Tags selected: cat, invented\n"
+                "\n"
+                "Final selection based on rules:\n"
+                "cat\n"
+                "dog"
+            ),
+            "mode": "en_pool",
+            "response_format_used": "line_tags",
+        },
+    )
+    _write_json(
+        run_dir / "requests" / "req1" / "normalized.json",
+        {
+            "response_format_requested": "line_tags",
+            "response_format_used": "line_tags",
+            "accepted_tags": ["cat"],
+            "accepted_ids": [],
+            "rejected_tags": ["invented"],
+            "rejected_ids": [],
+            "pool_violations": 1,
+            "parse_ok": True,
+            "schema_ok": True,
+            "json_extracted": False,
+            "line_fallback_used": False,
+            "pool_ok": False,
+            "error_type": "pool_validation_failed",
+            "error": "old",
+        },
+    )
+
+    result = collect_run(run_dir)
+
+    import csv
+
+    row = next(csv.DictReader(result["summary_path"].open(encoding="utf-8-sig", newline="")))
+    assert row["status"] == "success"
+    assert row["accepted_tags"] == '["cat", "dog"]'
+    assert row["rejected_tags"] == "[]"
+    assert row["reasoning_leak_detected"].lower() == "true"
+    assert row["reasoning_leak_recovered"].lower() == "true"

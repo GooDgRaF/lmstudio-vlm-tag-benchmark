@@ -4,7 +4,6 @@ import csv
 import html
 import json
 import re
-import statistics
 from pathlib import Path
 from typing import Any
 
@@ -242,6 +241,8 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
         chips.append(_render_chip("no final answer", "error"))
     elif error_type and error_type != "pool_validation_failed":
         chips.append(_render_chip(error_type, "error"))
+    if _truthy(cell.get("reasoning_leak_detected")):
+        chips.append(_render_chip("thought anyway", "error"))
     chips.extend(_render_tag_chips(accepted, accepted_class))
     chips.extend(_render_tag_chips(rejected_tags, "warn"))
     chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
@@ -268,6 +269,22 @@ def _to_float(value: Any) -> float | None:
     if x <= 0:
         return None
     return x
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"true", "1", "yes", "y"}
+
+
+def _format_seconds(value: float | None) -> str:
+    if value is None:
+        return "-"
+    if value >= 100:
+        return f"{value:.0f}s"
+    if value >= 10:
+        return f"{value:.1f}s"
+    return f"{value:.2f}s"
 
 
 def _read_diagnostics(run_dir: Path) -> dict[str, Any]:
@@ -333,6 +350,8 @@ def build_report(run_dir: Path) -> Path:
             "rejected_tags": _parse_json_cell(row.get("rejected_tags")),
             "rejected_ids": _parse_json_cell(row.get("rejected_ids")),
             "no_final_answer": row.get("no_final_answer") or "",
+            "reasoning_leak_detected": row.get("reasoning_leak_detected") or "",
+            "reasoning_leak_recovered": row.get("reasoning_leak_recovered") or "",
             "error_type": row.get("error_type") or "",
             "error": row.get("error") or "",
             "status": row.get("status") or "",
@@ -347,59 +366,32 @@ def build_report(run_dir: Path) -> Path:
 
     top_mode_sequence = list(dict.fromkeys(mode_order + [r.get("mode", "") for r in rows if r.get("mode")]))
 
-    request_count = len(rows)
-    error_count = sum(1 for r in rows if (r.get("error_type") or "").strip())
-    pool_violations = sum(_to_int(r.get("pool_violations"), default=0) for r in rows)
+    model_latency_totals: dict[str, float] = {}
+    model_image_ids: dict[str, set[str]] = {}
+    for row in rows:
+        model = str(row.get("model_label") or "").strip()
+        if not model:
+            continue
+        latency = _to_float(row.get("latency_sec"))
+        if latency is not None:
+            model_latency_totals[model] = model_latency_totals.get(model, 0.0) + latency
+        image_id = str(row.get("image_id") or "").strip()
+        if image_id:
+            model_image_ids.setdefault(model, set()).add(image_id)
 
-    request_latencies: list[tuple[str, float]] = []
-    if diag_requests:
-        for item in diag_requests:
-            if not isinstance(item, dict):
-                continue
-            latency = _to_float(item.get("latency_sec"))
-            if latency is None:
-                continue
-            request_latencies.append((str(item.get("request_id") or ""), latency))
-    else:
-        for row in rows:
-            latency = _to_float(row.get("latency_sec"))
-            if latency is None:
-                continue
-            request_latencies.append((str(row.get("request_id") or ""), latency))
+    def model_header(model: str) -> str:
+        total = model_latency_totals.get(model)
+        image_count = len(model_image_ids.get(model) or set())
+        avg_per_image = (total / image_count) if total is not None and image_count else None
+        timing = f"{_format_seconds(total)} / {_format_seconds(avg_per_image)}"
+        return (
+            "<th class='model-col'>"
+            f"<div class='model-name'>{html.escape(model)}</div>"
+            f"<div class='model-time'>{html.escape(timing)}</div>"
+            "</th>"
+        )
 
-    avg_request_latency = round(statistics.mean([x[1] for x in request_latencies]), 4) if request_latencies else None
-    fastest_request = min(request_latencies, key=lambda x: x[1]) if request_latencies else None
-    slowest_request = max(request_latencies, key=lambda x: x[1]) if request_latencies else None
-
-    image_totals: dict[str, float] = {}
-    if diag_requests:
-        for item in diag_requests:
-            if not isinstance(item, dict):
-                continue
-            latency = _to_float(item.get("latency_sec"))
-            if latency is None:
-                continue
-            image_id = str(item.get("image_id") or "")
-            if not image_id:
-                continue
-            image_totals[image_id] = image_totals.get(image_id, 0.0) + latency
-    else:
-        for row in rows:
-            latency = _to_float(row.get("latency_sec"))
-            if latency is None:
-                continue
-            image_id = str(row.get("image_id") or "")
-            if not image_id:
-                continue
-            image_totals[image_id] = image_totals.get(image_id, 0.0) + latency
-    avg_image_total = round(statistics.mean(image_totals.values()), 4) if image_totals else None
-    fastest_image = min(image_totals.items(), key=lambda x: x[1]) if image_totals else None
-    slowest_image = max(image_totals.items(), key=lambda x: x[1]) if image_totals else None
-    is_partial = bool(diag_run.get("is_partial"))
-    expected_request_count = _to_int(diag_run.get("expected_request_count"), default=request_count)
-    completed_request_count = _to_int(diag_run.get("completed_request_count"), default=request_count)
-
-    header_cells = "".join(f"<th class='model-col'>{html.escape(model)}</th>" for model in model_order)
+    header_cells = "".join(model_header(model) for model in model_order)
 
     body_rows: list[str] = []
     for image_id in image_order:
@@ -480,6 +472,8 @@ def build_report(run_dir: Path) -> Path:
     th.mode-col, td.mode-cell {{ position: sticky; left: 260px; background: #fff; z-index: 1; min-width: 90px; }}
     thead th.image-col, thead th.mode-col {{ z-index: 3; background: #f1f5f9; }}
     .model-col {{ min-width: 220px; }}
+    .model-name {{ font-weight: 700; }}
+    .model-time {{ margin-top: 3px; font-size: 11px; color: #64748b; font-weight: 500; }}
     .thumb {{ width: 100%; height: auto; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
     .thumb.missing {{ width: 100%; aspect-ratio: 3 / 2; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }}
     .small {{ color: #64748b; font-size: 11px; word-break: break-word; }}
@@ -516,20 +510,6 @@ def build_report(run_dir: Path) -> Path:
   <h1>Answer matrix report</h1>
   <div class='topline'>
     <span class='badge'>run: {html.escape(run_dir.name)}</span>
-    <span class='badge'>completion: {"partial" if is_partial else "complete"}</span>
-    <span class='badge'>completed: {completed_request_count}/{expected_request_count}</span>
-    <span class='badge'>images: {len(image_order)}</span>
-    <span class='badge'>models: {len(model_order)}</span>
-    <span class='badge'>modes: {len(top_mode_sequence)}</span>
-    <span class='badge'>requests: {request_count}</span>
-    <span class='badge'>errors: {error_count}</span>
-    <span class='badge'>pool violations: {pool_violations}</span>
-    <span class='badge'>avg req latency: {avg_request_latency if avg_request_latency is not None else "-"}</span>
-    <span class='badge'>fastest req: {(fastest_request[0] + " (" + str(round(fastest_request[1],4)) + "s)") if fastest_request else "-"}</span>
-    <span class='badge'>slowest req: {(slowest_request[0] + " (" + str(round(slowest_request[1],4)) + "s)") if slowest_request else "-"}</span>
-    <span class='badge'>avg image total: {avg_image_total if avg_image_total is not None else "-"}</span>
-    <span class='badge'>fastest image: {(fastest_image[0] + " (" + str(round(fastest_image[1],4)) + "s)") if fastest_image else "-"}</span>
-    <span class='badge'>slowest image: {(slowest_image[0] + " (" + str(round(slowest_image[1],4)) + "s)") if slowest_image else "-"}</span>
     {diagnostics_link}
   </div>
   {duplicate_note}
@@ -539,6 +519,8 @@ def build_report(run_dir: Path) -> Path:
     <span>{_render_chip('pool match', 'ok')}</span>
     <span>{_render_chip('out of pool', 'warn')}</span>
     <span>{_render_chip('request error', 'error')}</span>
+    <span>{_render_chip('thought anyway', 'error')}</span>
+    <span>Model headers show total request latency / average latency per unique image.</span>
     <span>Empty cells mean no rendered tags for that request.</span>
   </div>
   <div class='table-wrap'>
@@ -648,6 +630,8 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
             f"<td>{_escape(item.get('output_source'))}</td>"
             f"<td>{_yn(item.get('final_content_empty', item.get('content_empty')))}</td>"
             f"<td>{_yn(item.get('reasoning_content_present'))}</td>"
+            f"<td>{_yn(item.get('reasoning_leak_detected'))}</td>"
+            f"<td>{_yn(item.get('reasoning_leak_recovered'))}</td>"
             f"<td>{_yn(item.get('no_final_answer'))}</td>"
             f"<td>{_escape(item.get('normalization_error_type'))}</td>"
             f"<td>{_escape(item.get('final_content_length', item.get('content_length')))}</td>"
@@ -733,7 +717,7 @@ def build_diagnostics_report(run_dir: Path) -> Path | None:
   <div class="wrap"><table><thead><tr><th>model</th><th>params</th><th>quant</th><th>load ok</th><th>load sec</th><th>smoke</th><th>req</th><th>errors</th><th>pool viol</th><th>avg</th><th>median</th><th>min</th><th>max</th><th>parse rate</th><th>schema rate</th><th>pool rate</th><th>ctx req</th><th>ctx actual</th><th>unload ok</th></tr></thead><tbody>{''.join(model_rows)}</tbody></table></div>
 
   <h2>Request diagnostics</h2>
-  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>transport</th><th>reasoning req</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>output src</th><th>final empty</th><th>reasoning present</th><th>no final</th><th>norm err</th><th>final len</th><th>reasoning len</th><th>reasoning tok</th><th>tok/sec</th><th>ttft sec</th><th>raw</th><th>normalized</th><th>request diag</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
+  <div class="wrap"><table><thead><tr><th>image</th><th>mode</th><th>model</th><th>latency</th><th>fmt req</th><th>fmt used</th><th>transport</th><th>reasoning req</th><th>parse</th><th>schema</th><th>pool</th><th>viol</th><th>error type</th><th>finish</th><th>p tok</th><th>c tok</th><th>t tok</th><th>ctx near</th><th>ctx overflow</th><th>trunc</th><th>ok tags</th><th>rej tags</th><th>rej ids</th><th>output src</th><th>final empty</th><th>reasoning present</th><th>thought anyway</th><th>leak recovered</th><th>no final</th><th>norm err</th><th>final len</th><th>reasoning len</th><th>reasoning tok</th><th>tok/sec</th><th>ttft sec</th><th>raw</th><th>normalized</th><th>request diag</th></tr></thead><tbody>{''.join(request_rows)}</tbody></table></div>
 
   <h2>Pool diagnostics</h2>
   <div class="wrap"><table><thead><tr><th>pool</th><th>path</th><th>type</th><th>tag count</th><th>entry count</th><th>id prefixes</th><th>sha256</th></tr></thead><tbody>{''.join(pool_rows)}</tbody></table></div>

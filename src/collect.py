@@ -5,9 +5,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from src.diagnostics import detect_git_commit, now_timestamp
 from src.report import build_diagnostics_report, build_report
 from src.storage import SUMMARY_FIELDS
+from src.tag_pools import ExplainedTagEntry, TagPools
+from src.validator import normalize_model_output
 
 
 def _to_int(value: Any, default: int = 0) -> int:
@@ -22,6 +26,107 @@ def _load_json(path: Path) -> dict[str, Any] | None:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+
+
+def _load_run_config(run_dir: Path) -> dict[str, Any]:
+    path = run_dir / "run_config.yaml"
+    if not path.exists():
+        return {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _resolve_project_path(value: str, root: Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return (root / path).resolve()
+
+
+def _load_plain_pool(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    return [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def _load_explained_pool(path: Path) -> list[ExplainedTagEntry]:
+    if not path.exists():
+        return []
+    entries: list[ExplainedTagEntry] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+        item_id, tag, explanation = (part.strip() for part in parts)
+        if item_id and tag:
+            entries.append(ExplainedTagEntry(id=item_id, tag=tag, explanation=explanation))
+    return entries
+
+
+def _load_pools_for_reparse(run_dir: Path, manifest: dict[str, Any], run_config: dict[str, Any]) -> TagPools | None:
+    pools_raw = run_config.get("pools")
+    if not isinstance(pools_raw, dict):
+        return None
+    config_path = Path(str(manifest.get("config_path") or ""))
+    root = config_path.parent if config_path.is_absolute() and config_path.exists() else _project_root()
+    pools = TagPools(
+        ru_plain=_load_plain_pool(_resolve_project_path(str(pools_raw.get("ru_plain") or ""), root)),
+        en_plain=_load_plain_pool(_resolve_project_path(str(pools_raw.get("en_plain") or ""), root)),
+        ru_explained=_load_explained_pool(_resolve_project_path(str(pools_raw.get("ru_explained") or ""), root)),
+        en_explained=_load_explained_pool(_resolve_project_path(str(pools_raw.get("en_explained") or ""), root)),
+    )
+    if not any([pools.ru_plain, pools.en_plain, pools.ru_explained, pools.en_explained]):
+        return None
+    return pools
+
+
+def _reparse_normalized_from_raw(
+    *,
+    raw: dict[str, Any] | None,
+    normalized: dict[str, Any] | None,
+    req: dict[str, Any],
+    pools: TagPools | None,
+    run_config: dict[str, Any],
+) -> dict[str, Any] | None:
+    if raw is None or normalized is None or pools is None:
+        return normalized
+    raw_output = str(raw.get("final_content") or "")
+    if not raw_output:
+        return normalized
+
+    validation = run_config.get("validation") if isinstance(run_config.get("validation"), dict) else {}
+    limits = run_config.get("limits") if isinstance(run_config.get("limits"), dict) else {}
+    reparsed = normalize_model_output(
+        raw_output=raw_output,
+        mode=str(normalized.get("mode") or raw.get("mode") or req.get("mode") or ""),
+        requested_response_format=str(
+            normalized.get("response_format_requested")
+            or raw.get("response_format_used")
+            or raw.get("response_format_requested")
+            or req.get("response_format_requested")
+            or "line_tags"
+        ),
+        pools=pools,
+        max_tags=_to_int(limits.get("max_tags"), 10),
+        allow_json_extraction=bool(validation.get("allow_json_extraction", True)),
+        allow_line_fallback=bool(validation.get("allow_line_fallback", True)),
+        drop_tags_not_in_pool=bool(validation.get("drop_tags_not_in_pool", True)),
+        prompt_version=str(normalized.get("prompt_version") or req.get("prompt_version") or raw.get("prompt_version") or "v2"),
+    )
+    return {**normalized, **reparsed}
 
 
 def _is_stale(run_dir: Path) -> bool:
@@ -48,7 +153,7 @@ def _read_errors_log(run_dir: Path) -> str:
 
 def _effective_status(status: dict[str, Any], normalized: dict[str, Any] | None) -> str:
     status_name = str(status.get("status") or "")
-    if status_name == "skipped" and normalized is not None:
+    if status_name in {"success", "failed", "skipped"} and normalized is not None:
         return "failed" if normalized.get("error_type") else "success"
     return status_name
 
@@ -60,6 +165,8 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
     manifest = _load_json(manifest_path)
     if manifest is None:
         raise RuntimeError(f"Invalid run_manifest.json in {run_dir}")
+    run_config_yaml = _load_run_config(run_dir)
+    reparse_pools = _load_pools_for_reparse(run_dir, manifest, run_config_yaml)
 
     lock_path = run_dir / "run.lock"
     warnings: list[dict[str, Any]] = []
@@ -118,6 +225,17 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             base_prefix: str,
         ) -> None:
             nonlocal attempt_count, successful_attempt_count, failed_attempt_count
+            raw_payload = _load_json(run_dir / base_prefix / "raw.json")
+            normalized = _reparse_normalized_from_raw(
+                raw=raw_payload,
+                normalized=normalized,
+                req={**req, **request_descriptor},
+                pools=reparse_pools,
+                run_config=run_config_yaml,
+            )
+            if normalized is not None:
+                normalized_path = run_dir / base_prefix / "normalized.json"
+                normalized_path.write_text(json.dumps(normalized, ensure_ascii=False, indent=2), encoding="utf-8")
             attempt_count += 1
             status_name = _effective_status(status, normalized)
             if status_name == "success":
@@ -208,6 +326,8 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "reasoning_content_present": reasoning_content_present,
                     "reasoning_content_length": reasoning_content_length,
                     "reasoning_tokens": normalized.get("reasoning_tokens"),
+                    "reasoning_leak_detected": bool(normalized.get("reasoning_leak_detected")),
+                    "reasoning_leak_recovered": bool(normalized.get("reasoning_leak_recovered")),
                     "no_final_answer": no_final_answer,
                     "normalization_error_type": normalized.get("normalization_error_type"),
                     "tokens_per_second": normalized.get("tokens_per_second"),
@@ -252,6 +372,8 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "reasoning_tokens": normalized.get("reasoning_tokens"),
                     "reasoning_content_length": reasoning_content_length,
                     "final_content_length": final_content_length,
+                    "reasoning_leak_detected": bool(normalized.get("reasoning_leak_detected")),
+                    "reasoning_leak_recovered": bool(normalized.get("reasoning_leak_recovered")),
                     "tokens_per_second": normalized.get("tokens_per_second"),
                     "time_to_first_token_seconds": normalized.get("time_to_first_token_seconds"),
                     "accepted_tag_count": len(normalized.get("accepted_tags") or []),
@@ -260,6 +382,28 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
                     "raw_path": f"{base_prefix}/raw.json",
                     "normalized_path": f"{base_prefix}/normalized.json",
                 }
+            else:
+                req_diag.update(
+                    {
+                        "status": status_name or "unknown",
+                        "response_format_used": normalized.get("response_format_used"),
+                        "parse_ok": bool(normalized.get("parse_ok")),
+                        "schema_ok": bool(normalized.get("schema_ok")),
+                        "pool_ok": bool(normalized.get("pool_ok")),
+                        "pool_violations": int(normalized.get("pool_violations") or 0),
+                        "error_type": normalized.get("error_type"),
+                        "error": normalized.get("error"),
+                        "accepted_tag_count": len(normalized.get("accepted_tags") or []),
+                        "rejected_tag_count": len(normalized.get("rejected_tags") or []),
+                        "rejected_id_count": len(normalized.get("rejected_ids") or []),
+                        "reasoning_leak_detected": bool(normalized.get("reasoning_leak_detected")),
+                        "reasoning_leak_recovered": bool(normalized.get("reasoning_leak_recovered")),
+                    }
+                )
+                (run_dir / base_prefix / "diagnostics.json").write_text(
+                    json.dumps(req_diag, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
             request_rows.append(req_diag)
 
         if result_mode == "accumulate":
@@ -314,7 +458,14 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
             if strict:
                 raise RuntimeError(f"Missing status artifact for {request_id}")
             continue
-        status_name = _effective_status(status, normalized)
+        normalized_for_status = _reparse_normalized_from_raw(
+            raw=_load_json(request_dir / "raw.json"),
+            normalized=normalized,
+            req={**req, **request_descriptor},
+            pools=reparse_pools,
+            run_config=run_config_yaml,
+        )
+        status_name = _effective_status(status, normalized_for_status)
         if status_name == "running":
             incomplete += 1
             running_or_incomplete_attempt_count += 1
@@ -330,7 +481,7 @@ def collect_run(run_dir: Path, *, write_reports: bool = False, strict: bool = Fa
         append_attempt(
             attempt_no=int(status.get("attempt") or 1),
             status=status,
-            normalized=normalized,
+            normalized=normalized_for_status,
             req_diag=req_diag,
             base_prefix=f"requests/{request_id}",
         )

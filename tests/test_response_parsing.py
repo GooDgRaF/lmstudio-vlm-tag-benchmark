@@ -133,6 +133,28 @@ def test_pool_rejects_out_of_pool_without_fuzzy(tmp_path):
     assert out["rejected_tags"] == ["DOG"]
 
 
+def test_pool_tags_with_inline_reasoning_use_bottom_valid_group(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output=(
+            "The user wants me to generate image tags.\n"
+            "1. **Analyze the image:** It contains a cat and a dog.\n"
+            "Tags selected: cat, invented, dogcat\n"
+            "\n"
+            "Final selection based on rules:\n"
+            "cat\n"
+            "dog"
+        ),
+        mode="en_pool",
+        requested_response_format="line_tags",
+    )
+    assert out["accepted_tags"] == ["cat", "dog"]
+    assert out["rejected_tags"] == []
+    assert out["pool_ok"] is True
+    assert out["reasoning_leak_detected"] is True
+    assert out["reasoning_leak_recovered"] is True
+
+
 def test_unknown_explained_ids_rejected(tmp_path):
     out = _normalize(
         tmp_path,
@@ -142,6 +164,27 @@ def test_unknown_explained_ids_rejected(tmp_path):
     )
     assert out["accepted_ids"] == ["EN001"]
     assert out["rejected_ids"] == ["EN999"]
+
+
+def test_pool_ids_with_inline_reasoning_use_bottom_valid_group(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output=(
+            "* **Analyze the image:** choose from the ID list.\n"
+            "EN999 appears in the reasoning but is invalid.\n"
+            "\n"
+            "* **Final List Construction:** EN001, EN002.\n"
+            "EN001\n"
+            "EN002"
+        ),
+        mode="en_pool_explained",
+        requested_response_format="line_ids",
+    )
+    assert out["accepted_ids"] == ["EN001", "EN002"]
+    assert out["accepted_tags"] == ["General", "Anime"]
+    assert out["rejected_ids"] == []
+    assert out["reasoning_leak_detected"] is True
+    assert out["reasoning_leak_recovered"] is True
 
 
 def test_bracketed_explained_ids_are_mapped_to_tags(tmp_path):
