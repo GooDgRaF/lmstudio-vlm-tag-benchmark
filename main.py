@@ -7,7 +7,9 @@ from pathlib import Path
 from src.config import BenchmarkConfig, ConfigError, load_config
 from src.collect import collect_run, ensure_collected
 from src.image_loader import discover_images
+from src.init_config import InitConfigError, render_user_config, write_user_config
 from src.lmstudio_client import LMStudioClient, LMStudioClientError
+from src.model_registry import refresh_registry
 from src.report import build_diagnostics_report, build_report
 from src.runner import run_benchmark
 from src.validator import ValidationError, validate_config
@@ -25,6 +27,30 @@ def _load_validated_config(config_path: str) -> BenchmarkConfig:
 def cmd_validate_config(args: argparse.Namespace) -> int:
     _load_validated_config(args.config)
     print(f"Config loaded: {args.config}")
+    return 0
+
+
+def cmd_init_config(args: argparse.Namespace) -> int:
+    try:
+        registry = refresh_registry()
+    except LMStudioClientError:
+        raise SystemExit(
+            "Failed to connect to LM Studio at http://localhost:1234/api/v1.\n"
+            "Start LM Studio server and run `python main.py init-config` again."
+        )
+
+    output_path = Path(args.output)
+    try:
+        content = render_user_config(registry, images_folder=args.images_folder)
+        write_user_config(output_path, content, force=args.force)
+    except InitConfigError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print("Model registry written: models.registry.yaml")
+    print(f"Config written: {output_path}")
+    print("Edit models/modes by commenting or uncommenting list items, then run:")
+    print(f"  python main.py dry-run --config {output_path}")
+    print(f"  python main.py run --config {output_path}")
     return 0
 
 
@@ -97,6 +123,12 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate-config", help="Validate config file")
     validate.add_argument("--config", required=True)
     validate.set_defaults(func=cmd_validate_config)
+
+    init_config = sub.add_parser("init-config", help="Generate human-friendly config.yaml")
+    init_config.add_argument("--output", default="config.yaml")
+    init_config.add_argument("--force", action="store_true")
+    init_config.add_argument("--images-folder", default="ImgToTag")
+    init_config.set_defaults(func=cmd_init_config)
 
     list_models = sub.add_parser("list-models", help="List models from LM Studio")
     list_models.add_argument("--config", required=True)
