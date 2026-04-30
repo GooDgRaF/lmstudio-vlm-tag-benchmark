@@ -237,3 +237,19 @@ python -m pytest -q
   - `Set-Content -Encoding utf8BOM ...` (or `utf8` if BOM is not needed)
 - In Python, always use explicit encoding (for example `encoding="utf-8"` or `encoding="utf-8-sig"`).
 - Never use lossy conversion modes like `errors="ignore"` when fixing encoding issues.
+
+### How NOT to write Cyrillic
+
+- Do not copy text from a terminal/editor that already shows mojibake like `РџС...`, `Ð...`, `Ñ...`, or `???`.
+- Do not rewrite files through a shell session that cannot display Cyrillic correctly.
+- Do not run blind recoding with uncertain source encoding.
+- Do not save Cyrillic text through tools that replace unknown symbols with `?`.
+
+### How to write Cyrillic correctly
+
+- Write/edit Cyrillic in UTF-8 capable editors (VS Code / modern IDE) with explicit UTF-8 save mode.
+- If using PowerShell for file IO, always specify encoding explicitly (`UTF8`/`utf8BOM`).
+- Verify after edits:
+  - file opens readable in editor;
+  - no mojibake markers (`Р`, `С`, `вЂ`, `Ð`, `Ñ` patterns) appear unexpectedly.
+- If a file is damaged, restore from a known-good git revision first, then apply intended content changes.

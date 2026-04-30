@@ -367,27 +367,40 @@ def build_report(run_dir: Path) -> Path:
     top_mode_sequence = list(dict.fromkeys(mode_order + [r.get("mode", "") for r in rows if r.get("mode")]))
 
     model_latency_totals: dict[str, float] = {}
-    model_image_ids: dict[str, set[str]] = {}
+    model_mode_latencies: dict[tuple[str, str], list[float]] = {}
     for row in rows:
         model = str(row.get("model_label") or "").strip()
         if not model:
             continue
+        mode = str(row.get("mode") or "").strip()
         latency = _to_float(row.get("latency_sec"))
         if latency is not None:
             model_latency_totals[model] = model_latency_totals.get(model, 0.0) + latency
-        image_id = str(row.get("image_id") or "").strip()
-        if image_id:
-            model_image_ids.setdefault(model, set()).add(image_id)
+            if mode:
+                model_mode_latencies.setdefault((model, mode), []).append(latency)
+
+    present_modes = {(str(row.get("mode") or "").strip()) for row in rows if str(row.get("mode") or "").strip()}
+    pool_modes = [
+        mode
+        for mode in mode_order
+        if mode in {"ru_pool", "ru_pool_explained", "en_pool", "en_pool_explained"} and mode in present_modes
+    ]
 
     def model_header(model: str) -> str:
         total = model_latency_totals.get(model)
-        image_count = len(model_image_ids.get(model) or set())
-        avg_per_image = (total / image_count) if total is not None and image_count else None
-        timing = f"{_format_seconds(total)} / {_format_seconds(avg_per_image)}"
+        total_part = _format_seconds(total)
+        timing_parts: list[str] = []
+        for mode in pool_modes:
+            samples = model_mode_latencies.get((model, mode), [])
+            avg_mode = (sum(samples) / len(samples)) if samples else None
+            timing_parts.append(_format_seconds(avg_mode))
+        timing = f"<span class='total'>{html.escape(total_part)}</span>"
+        if timing_parts:
+            timing += " / " + " / ".join(html.escape(item) for item in timing_parts)
         return (
             "<th class='model-col'>"
             f"<div class='model-name'>{html.escape(model)}</div>"
-            f"<div class='model-time'>{html.escape(timing)}</div>"
+            f"<div class='model-time'>{timing}</div>"
             "</th>"
         )
 
@@ -452,6 +465,13 @@ def build_report(run_dir: Path) -> Path:
         f"<div class='note'>Duplicate request rows: {duplicates}</div>" if duplicates else ""
     )
 
+    pool_timing_labels = " / ".join(MODE_LABELS.get(mode, mode) for mode in pool_modes)
+    model_timing_note = (
+        f"Model headers: total latency / average latency for {pool_timing_labels}."
+        if pool_timing_labels
+        else "Model headers: total latency."
+    )
+
     html_text = f"""<!doctype html>
 <html lang=\"en\">
 <head>
@@ -474,7 +494,8 @@ def build_report(run_dir: Path) -> Path:
     .model-col {{ min-width: 220px; }}
     .model-name {{ font-weight: 700; }}
     .model-time {{ margin-top: 3px; font-size: 11px; color: #64748b; font-weight: 500; }}
-    .thumb {{ width: 100%; height: auto; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
+    .model-time .total {{ font-weight: 800; color: #0f172a; }}
+    .thumb {{ width: 100%; max-height: 240px; height: auto; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
     .thumb.missing {{ width: 100%; aspect-ratio: 3 / 2; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }}
     .small {{ color: #64748b; font-size: 11px; word-break: break-word; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 4px; }}
@@ -520,7 +541,7 @@ def build_report(run_dir: Path) -> Path:
     <span>{_render_chip('out of pool', 'warn')}</span>
     <span>{_render_chip('request error', 'error')}</span>
     <span>{_render_chip('thought anyway', 'error')}</span>
-    <span>Model headers show total request latency / average latency per unique image.</span>
+    <span>{html.escape(model_timing_note)}</span>
     <span>Empty cells mean no rendered tags for that request.</span>
   </div>
   <div class='table-wrap'>
