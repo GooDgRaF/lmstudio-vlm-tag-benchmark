@@ -71,7 +71,6 @@ main.py               CLI entrypoint
 configs/config.smoke.yaml     быстрый smoke-конфиг
 configs/config.example.yaml   полный пример конфигурации
 requirements.txt      Python-зависимости
-stats.json            численная сводка по моделям и пулам
 ImgToTag/             входные изображения пользователя
 models/               списки моделей LM Studio
 pools/                нормализованные tag pools
