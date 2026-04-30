@@ -1,34 +1,11 @@
-excluded_models:
-  - model_key: "nvidia/nemotron-3-nano-4b"
-    selected_variant: "nvidia/nemotron-3-nano-4b@q4_k_m"
-    display_name: "Nemotron 3 Nano 4B"
-    params: "4.0B"
-    quant: "Q4_K_M"
-    vision: false
-    reason:
-      - "not_vision"
-  - model_key: "qwen/qwen3.6-35b-a3b"
-    selected_variant: "qwen/qwen3.6-35b-a3b@q4_k_m"
-    display_name: "Qwen3.6 35B A3B"
-    params: "35B-A3B"
-    quant: "Q4_K_M"
-    vision: true
-    reason:
-      - "params_20b_or_more"
-  - model_key: "qwen/qwen3.6-27b"
-    selected_variant: "qwen/qwen3.6-27b@q4_k_m"
-    display_name: "Qwen3.6 27B"
-    params: "27B"
-    quant: "Q4_K_M"
-    vision: true
-    reason:
-      - "params_20b_or_more"
-  - model_key: "text-embedding-nomic-embed-text-v1.5"
-    selected_variant: null
-    display_name: "Nomic Embed Text v1.5"
-    params: ""
-    quant: "Q4_K_M"
-    vision: false
-    reason:
-      - "not_llm"
-      - "not_vision"
+models:
+- id: nvidia/nemotron-3-nano-4b@q4_k_m
+  reason: not_vision
+- id: qwen/qwen3.6-35b-a3b@q4_k_m
+  reason: params_over_10b
+  params: 35B
+- id: qwen/qwen3.6-27b@q4_k_m
+  reason: params_over_10b
+  params: 27B
+- id: text-embedding-nomic-embed-text-v1.5
+  reason: not_llm

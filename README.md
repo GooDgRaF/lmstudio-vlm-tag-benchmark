@@ -58,8 +58,8 @@ python main.py report --run results/<run_id>
 Для advanced/internal full-shape профилей остаются:
 
 ```bash
-python main.py dry-run --config config.example.yaml --limit 1
-python main.py run --config config.example.yaml --limit 1
+python main.py dry-run --config configs/config.example.yaml --limit 1
+python main.py run --config configs/config.example.yaml --limit 1
 ```
 
 Без `--limit` полный конфиг обрабатывает все изображения из `ImgToTag/` всеми настроенными моделями и режимами.
@@ -67,8 +67,8 @@ python main.py run --config config.example.yaml --limit 1
 Для небольшой проверки reasoning-профилей REST используйте:
 
 ```bash
-python main.py validate-config --config config.rest-reasoning-smoke.yaml
-python main.py run --config config.rest-reasoning-smoke.yaml --run-id rest-reasoning-e2e-v4
+python main.py validate-config --config configs/config.rest-reasoning-smoke.yaml
+python main.py run --config configs/config.rest-reasoning-smoke.yaml --run-id rest-reasoning-e2e-v4
 ```
 
 ## Документация
@@ -171,4 +171,5 @@ results/<run_id>/
 - `report.html` is the primary answer matrix (`image x mode x model`).
 - `diagnostics.html` is the secondary technical diagnostics page.
 - `python main.py report --run results/<run_id>` refreshes both pages when `diagnostics.json` exists.
+
 

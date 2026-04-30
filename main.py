@@ -82,6 +82,7 @@ def cmd_list_models(args: argparse.Namespace) -> int:
 def cmd_dry_run(args: argparse.Namespace) -> int:
     cfg = _load_validated_config(args.config)
     images = discover_images(cfg, limit=args.limit)
+    print("Mode: dry-run (validation and planning only; no LM Studio inference requests)")
     print(f"Config: {args.config}")
     print(f"Images discovered: {len(images)}")
     print(f"Models selected: {len(cfg.models)}")
@@ -100,6 +101,7 @@ def cmd_dry_run(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     cfg = _load_validated_config(args.config)
+    print("Mode: run (executes LM Studio requests and writes benchmark artifacts)")
     run_dir = run_benchmark(cfg, limit=args.limit, run_id=args.run_id, force_lock=args.force_lock)
     print(f"Run completed: {run_dir}")
     return 0
@@ -164,12 +166,15 @@ def build_parser() -> argparse.ArgumentParser:
     list_models.add_argument("--verbose", action="store_true")
     list_models.set_defaults(func=cmd_list_models)
 
-    dry_run = sub.add_parser("dry-run", help="Validate inputs and print run plan")
+    dry_run = sub.add_parser(
+        "dry-run",
+        help="Validate config/inputs and print planned request count (no model inference)",
+    )
     dry_run.add_argument("--config", required=True)
     dry_run.add_argument("--limit", type=int, default=None)
     dry_run.set_defaults(func=cmd_dry_run)
 
-    run = sub.add_parser("run", help="Execute benchmark")
+    run = sub.add_parser("run", help="Execute benchmark with real LM Studio model requests")
     run.add_argument("--config", required=True)
     run.add_argument("--limit", type=int, default=None)
     run.add_argument("--run-id", default=None)

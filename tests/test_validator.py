@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import yaml
 
@@ -99,9 +99,10 @@ def test_duplicate_model_ids_allowed_if_labels_unique(tmp_path):
 
 def test_repo_reasoning_configs_validate():
     for path in [
-        "config.smoke.yaml",
-        "config.example.yaml",
-        "config.rest-reasoning-smoke.yaml",
+        "configs/config.smoke.yaml",
+        "configs/config.example.yaml",
+        "configs/config.rest-reasoning-smoke.yaml",
     ]:
         cfg = load_config(path)
         validate_config(cfg)
+

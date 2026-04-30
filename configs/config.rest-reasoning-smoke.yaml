@@ -1,4 +1,4 @@
-lmstudio:
+﻿lmstudio:
   host: "http://localhost:1234"
   api_base_url: "http://localhost:1234/api/v1"
   openai_base_url: "http://localhost:1234/v1"
@@ -30,22 +30,22 @@ models:
     max_context_length: 32768
 
 input:
-  image_dir: "ImgToTag_largest"
+  image_dir: "../ImgToTag_largest"
   recursive: false
   extensions: [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
 
 output:
-  results_dir: "results"
+  results_dir: "../results"
 
 modes:
   - ru_pool
   - en_pool
 
 pools:
-  ru_plain: "pools/ru_plain.txt"
-  en_plain: "pools/en_plain.txt"
-  ru_explained: "pools/ru_explained_ids.tsv"
-  en_explained: "pools/en_explained_ids.tsv"
+  ru_plain: "../pools/ru_plain.txt"
+  en_plain: "../pools/en_plain.txt"
+  ru_explained: "../pools/ru_explained_ids.tsv"
+  en_explained: "../pools/en_explained_ids.tsv"
 
 generation:
   temperature: 0.0
@@ -109,3 +109,4 @@ evaluation:
   track_json_stability: true
   track_pool_compliance: true
   track_hallucinated_tags: true
+

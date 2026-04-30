@@ -35,8 +35,11 @@ def render_user_config(registry: ModelRegistry, images_folder: str = "ImgToTag")
     lines: list[str] = [
         "# Human-friendly config for Local VLM Image Tagger Benchmark.",
         "# Edit this file, then run:",
-        "#   python main.py dry-run --config config.yaml",
-        "#   python main.py run --config config.yaml",
+        "#   python main.py dry-run --config config.yaml   # validate config and show request plan only",
+        "#   python main.py run --config config.yaml       # execute benchmark and write results/",
+        "#",
+        "# dry-run does not call model inference.",
+        "# run performs real LM Studio requests and generates report artifacts.",
         "",
         f"images_folder: \"{images_folder}\"",
         "",

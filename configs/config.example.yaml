@@ -162,7 +162,7 @@ models:
     max_context_length: 131072
 
 input:
-  image_dir: "ImgToTag"
+  image_dir: "../ImgToTag"
   recursive: false
   extensions:
     - ".jpg"
@@ -172,7 +172,7 @@ input:
     - ".bmp"
 
 output:
-  results_dir: "results"
+  results_dir: "../results"
 
 modes:
   - ru_free
@@ -183,10 +183,10 @@ modes:
   - en_pool_explained
 
 pools:
-  ru_plain: "pools/ru_plain.txt"
-  en_plain: "pools/en_plain.txt"
-  ru_explained: "pools/ru_explained_ids.tsv"
-  en_explained: "pools/en_explained_ids.tsv"
+  ru_plain: "../pools/ru_plain.txt"
+  en_plain: "../pools/en_plain.txt"
+  ru_explained: "../pools/ru_explained_ids.tsv"
+  en_explained: "../pools/en_explained_ids.tsv"
 
 generation:
   temperature: 0.0
@@ -256,3 +256,4 @@ evaluation:
   track_json_stability: true
   track_pool_compliance: true
   track_hallucinated_tags: true
+
