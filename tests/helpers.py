@@ -6,7 +6,7 @@ import yaml
 
 
 def write_minimal_pools(base: Path) -> None:
-    pools = base / "pools"
+    pools = base / "promts" / "pools"
     pools.mkdir(parents=True, exist_ok=True)
     (pools / "ru_plain.txt").write_text("кот\n#comment\nсобака\n", encoding="utf-8")
     (pools / "en_plain.txt").write_text("cat\ndog\n", encoding="utf-8")
@@ -31,8 +31,24 @@ def write_minimal_images(base: Path) -> None:
     (nested / "c.webp").write_bytes(b"RIFFxxxxWEBP")
 
 
+def write_minimal_prompt_files(base: Path) -> None:
+    promts = base / "promts"
+    promts.mkdir(parents=True, exist_ok=True)
+    files = {
+        "ru_free.txt": "Дай теги к изображению на русском языке.\nФормат ответа: один тег на строку.\nМинимум 3 тега.\n",
+        "ru_pool.txt": "Дай теги к изображению на русском языке.\nВыбирай теги только из списка ниже.\nНе изменяй написание тегов.\n",
+        "ru_pool_explained.txt": "Дай ID к изображению на русском языке.\nФормат ответа: один ID на строку.\n",
+        "en_free.txt": "Give image tags in English.\nAnswer format: one tag per line.\nAt least 3 tags.\nFirst give the 3 most obvious tags.\nIf important visible objects are still missing, add up to 3 more tags.\nIf important visible objects are still missing after that, add up to 4 more tags.\n",
+        "en_pool.txt": "Give image tags in English.\nChoose tags only from the list below.\nDo not change tag spelling.\n",
+        "en_pool_explained.txt": "Give image IDs in English.\nAnswer format: one ID per line.\n",
+    }
+    for name, content in files.items():
+        (promts / name).write_text(content, encoding="utf-8")
+
+
 def build_config(base: Path) -> Path:
     write_minimal_pools(base)
+    write_minimal_prompt_files(base)
     write_minimal_images(base)
     results = base / "results"
     results.mkdir(parents=True, exist_ok=True)
@@ -62,10 +78,18 @@ def build_config(base: Path) -> Path:
         "output": {"results_dir": str(results.resolve())},
         "modes": ["ru_free", "ru_pool", "ru_pool_explained", "en_free", "en_pool", "en_pool_explained"],
         "pools": {
-            "ru_plain": "pools/ru_plain.txt",
-            "en_plain": "pools/en_plain.txt",
-            "ru_explained": "pools/ru_explained_ids.tsv",
-            "en_explained": "pools/en_explained_ids.tsv",
+            "ru_plain": "promts/pools/ru_plain.txt",
+            "en_plain": "promts/pools/en_plain.txt",
+            "ru_explained": "promts/pools/ru_explained_ids.tsv",
+            "en_explained": "promts/pools/en_explained_ids.tsv",
+        },
+        "prompt_files": {
+            "ru_free": "promts/ru_free.txt",
+            "ru_pool": "promts/ru_pool.txt",
+            "ru_pool_explained": "promts/ru_pool_explained.txt",
+            "en_free": "promts/en_free.txt",
+            "en_pool": "promts/en_pool.txt",
+            "en_pool_explained": "promts/en_pool_explained.txt",
         },
         "generation": {"temperature": 0.0, "top_p": 1.0, "max_tokens": 64},
         "load": {

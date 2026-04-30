@@ -31,6 +31,7 @@ def validate_config(cfg: BenchmarkConfig) -> None:
         "output",
         "modes",
         "pools",
+        "prompt_files",
         "generation",
         "load",
         "limits",
@@ -101,6 +102,19 @@ def validate_config(cfg: BenchmarkConfig) -> None:
         resolved = cfg.resolve_path(pool_path)
         if not resolved.exists():
             raise ValidationError(f"Pool file does not exist: {pool_path}")
+
+    prompt_paths = [
+        cfg.prompt_files.ru_free,
+        cfg.prompt_files.ru_pool,
+        cfg.prompt_files.ru_pool_explained,
+        cfg.prompt_files.en_free,
+        cfg.prompt_files.en_pool,
+        cfg.prompt_files.en_pool_explained,
+    ]
+    for prompt_path in prompt_paths:
+        resolved = cfg.resolve_path(prompt_path)
+        if not resolved.exists():
+            raise ValidationError(f"Prompt file does not exist: {prompt_path}")
 
     image_dir = cfg.resolve_path(cfg.input.image_dir)
     if not image_dir.exists():

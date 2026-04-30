@@ -1,0 +1,22 @@
+﻿Give image IDs in English.
+
+Answer format: one ID per line.
+At least 3 IDs if the image has at least 3 obvious visible features.
+At most {max_tags} IDs.
+
+First give the {first_chunk} most obvious IDs.
+If those {first_chunk} IDs are enough to capture the main content of the image, stop.
+If important visible objects are still missing, add up to {second_chunk} more IDs.
+If important visible objects are still missing after that, add up to {third_chunk} more IDs.
+Do not add IDs just to reach a number.
+
+Choose only matching IDs from the list below.
+Answer format: one ID per line.
+
+Rules:
+- IDs only, no image description;
+- no square brackets;
+- no Markdown;
+- no numbering;
+- no explanations;
+- do not guess non-obvious details; if unsure, skip.

@@ -50,6 +50,70 @@ def test_expand_simple_config_to_full(tmp_path):
     assert expanded["generation"]["max_tokens"] == 4096
     assert expanded["load"]["context_length"] == 8192
     assert expanded["models"][0]["reasoning"] == "off"
+    assert expanded["prompt_files"]["ru_pool"] == "promts/ru_pool.txt"
+
+
+def test_expand_simple_config_tag_files_override(tmp_path):
+    _write_registry(tmp_path)
+    simple = {
+        "images_folder": "ImgToTag",
+        "models": ["qwen3_5-9b-q4_k_m-no-think"],
+        "modes": ["ru_pool", "ru_pool_explained", "en_pool", "en_pool_explained"],
+        "tag_files": {
+            "ru": "custom/ru_plain.txt",
+            "ru_plus": "custom/ru_plus.tsv",
+            "en": "custom/en_plain.txt",
+            "en_plus": "custom/en_plus.tsv",
+        },
+    }
+    expanded = expand_user_config(simple, root_dir=tmp_path)
+    assert expanded["pools"]["ru_plain"] == "custom/ru_plain.txt"
+    assert expanded["pools"]["ru_explained"] == "custom/ru_plus.tsv"
+    assert expanded["pools"]["en_plain"] == "custom/en_plain.txt"
+    assert expanded["pools"]["en_explained"] == "custom/en_plus.tsv"
+
+
+def test_expand_simple_config_mode_prompt_files_override(tmp_path):
+    _write_registry(tmp_path)
+    simple = {
+        "images_folder": "ImgToTag",
+        "models": ["qwen3_5-9b-q4_k_m-no-think"],
+        "modes": ["ru_free"],
+        "mode_prompt_files": {
+            "ru_free": "custom_prompts/ru_free.txt",
+            "en_pool": "custom_prompts/en_pool.txt",
+        },
+    }
+    expanded = expand_user_config(simple, root_dir=tmp_path)
+    assert expanded["prompt_files"]["ru_free"] == "custom_prompts/ru_free.txt"
+    assert expanded["prompt_files"]["en_pool"] == "custom_prompts/en_pool.txt"
+    assert expanded["prompt_files"]["ru_pool"] == "promts/ru_pool.txt"
+
+
+def test_expand_simple_config_tag_files_unknown_key(tmp_path):
+    _write_registry(tmp_path)
+    simple = {
+        "images_folder": "ImgToTag",
+        "models": ["qwen3_5-9b-q4_k_m-no-think"],
+        "modes": ["ru_free"],
+        "tag_files": {"ru_extended": "x.txt"},
+    }
+    with pytest.raises(UserConfigError) as exc:
+        expand_user_config(simple, root_dir=tmp_path)
+    assert "Allowed keys" in str(exc.value)
+
+
+def test_expand_simple_config_mode_prompt_files_unknown_key(tmp_path):
+    _write_registry(tmp_path)
+    simple = {
+        "images_folder": "ImgToTag",
+        "models": ["qwen3_5-9b-q4_k_m-no-think"],
+        "modes": ["ru_free"],
+        "mode_prompt_files": {"ru_bonus": "x.txt"},
+    }
+    with pytest.raises(UserConfigError) as exc:
+        expand_user_config(simple, root_dir=tmp_path)
+    assert "Allowed keys" in str(exc.value)
 
 
 def test_expand_missing_registry_error(tmp_path):
@@ -93,9 +157,12 @@ max_output_tokens: 4096
         encoding="utf-8",
     )
     (tmp_path / "ImgToTag").mkdir()
-    (tmp_path / "pools").mkdir()
+    (tmp_path / "promts" / "pools").mkdir(parents=True)
+    (tmp_path / "promts").mkdir(exist_ok=True)
     for rel in ["ru_plain.txt", "en_plain.txt", "ru_explained_ids.tsv", "en_explained_ids.tsv"]:
-        (tmp_path / "pools" / rel).write_text("x\n", encoding="utf-8")
+        (tmp_path / "promts" / "pools" / rel).write_text("x\n", encoding="utf-8")
+    for rel in ["ru_free.txt", "ru_pool.txt", "ru_pool_explained.txt", "en_free.txt", "en_pool.txt", "en_pool_explained.txt"]:
+        (tmp_path / "promts" / rel).write_text("x\n", encoding="utf-8")
 
     cfg = load_config(simple_path)
     assert cfg.generation.max_tokens == 4096

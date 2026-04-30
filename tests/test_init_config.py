@@ -41,6 +41,9 @@ def test_init_config_writes_yaml_and_embeds_models_and_modes(tmp_path, monkeypat
     assert loaded["images_folder"] == "ImgToTag"
     assert loaded["models"] == ["qwen3-vl-4b-q4_k_m"]
     assert loaded["modes"] == ["ru_free"]
+    assert '# tag_files:' in text
+    assert '#   ru_plus: "promts/pools/ru_explained_ids.tsv"' in text
+    assert '#   ru_pool: "promts/ru_pool.txt"' in text
     assert '# - "qwen3-vl-8b-q4_k_m"' in text
     assert '# - "en_pool"' in text
 

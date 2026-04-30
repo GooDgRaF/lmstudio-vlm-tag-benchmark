@@ -144,6 +144,16 @@ class PoolsConfig:
 
 
 @dataclass(frozen=True)
+class PromptFilesConfig:
+    ru_free: str
+    ru_pool: str
+    ru_pool_explained: str
+    en_free: str
+    en_pool: str
+    en_pool_explained: str
+
+
+@dataclass(frozen=True)
 class BenchmarkConfig:
     config_path: Path
     root_dir: Path
@@ -153,6 +163,7 @@ class BenchmarkConfig:
     output: OutputConfig
     modes: list[str]
     pools: PoolsConfig
+    prompt_files: PromptFilesConfig
     generation: GenerationConfig
     load: LoadConfig
     limits: LimitsConfig
@@ -223,6 +234,7 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
     input_raw = _required_dict(loaded, "input")
     output_raw = _required_dict(loaded, "output")
     pools_raw = _required_dict(loaded, "pools")
+    prompt_files_raw = _required_dict(loaded, "prompt_files")
     generation_raw = _required_dict(loaded, "generation")
     load_raw = _required_dict(loaded, "load")
     limits_raw = _required_dict(loaded, "limits")
@@ -292,6 +304,14 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
             en_plain=str(pools_raw.get("en_plain", "")),
             ru_explained=str(pools_raw.get("ru_explained", "")),
             en_explained=str(pools_raw.get("en_explained", "")),
+        ),
+        prompt_files=PromptFilesConfig(
+            ru_free=str(prompt_files_raw.get("ru_free", "")),
+            ru_pool=str(prompt_files_raw.get("ru_pool", "")),
+            ru_pool_explained=str(prompt_files_raw.get("ru_pool_explained", "")),
+            en_free=str(prompt_files_raw.get("en_free", "")),
+            en_pool=str(prompt_files_raw.get("en_pool", "")),
+            en_pool_explained=str(prompt_files_raw.get("en_pool_explained", "")),
         ),
         generation=GenerationConfig(
             temperature=float(generation_raw.get("temperature", 0.0)),

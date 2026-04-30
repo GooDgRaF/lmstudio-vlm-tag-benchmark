@@ -83,9 +83,12 @@ models:
     )
     (tmp_path / "ImgToTag").mkdir()
     (tmp_path / "ImgToTag" / "a.jpg").write_bytes(b"x")
-    (tmp_path / "pools").mkdir()
+    (tmp_path / "promts" / "pools").mkdir(parents=True)
+    (tmp_path / "promts").mkdir(exist_ok=True)
     for rel in ["ru_plain.txt", "en_plain.txt", "ru_explained_ids.tsv", "en_explained_ids.tsv"]:
-        (tmp_path / "pools" / rel).write_text("x\n", encoding="utf-8")
+        (tmp_path / "promts" / "pools" / rel).write_text("x\n", encoding="utf-8")
+    for rel in ["ru_free.txt", "ru_pool.txt", "ru_pool_explained.txt", "en_free.txt", "en_pool.txt", "en_pool_explained.txt"]:
+        (tmp_path / "promts" / rel).write_text("x\n", encoding="utf-8")
 
     cfg = tmp_path / "config.yaml"
     cfg.write_text(

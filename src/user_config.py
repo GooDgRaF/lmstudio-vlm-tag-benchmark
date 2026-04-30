@@ -21,6 +21,7 @@ FULL_CONFIG_KEYS = {
     "input",
     "output",
     "pools",
+    "prompt_files",
     "generation",
     "load",
     "limits",
@@ -36,6 +37,8 @@ SIMPLE_ALLOWED_KEYS = {
     "limit_images",
     "models",
     "modes",
+    "tag_files",
+    "mode_prompt_files",
     "output_folder",
     "context_length",
     "max_output_tokens",
@@ -118,6 +121,61 @@ def _optional_bool(data: dict[str, Any], key: str, default: bool) -> bool:
     raise UserConfigError(f"Simple config field '{key}' must be boolean")
 
 
+def _resolve_tag_files(profile: dict[str, Any]) -> dict[str, str]:
+    defaults = {
+        "ru": "promts/pools/ru_plain.txt",
+        "ru_plus": "promts/pools/ru_explained_ids.tsv",
+        "en": "promts/pools/en_plain.txt",
+        "en_plus": "promts/pools/en_explained_ids.tsv",
+    }
+    raw = profile.get("tag_files")
+    if raw is None:
+        return defaults
+    if not isinstance(raw, dict):
+        raise UserConfigError("Simple config field 'tag_files' must be an object")
+
+    unknown = sorted([key for key in raw.keys() if key not in defaults])
+    if unknown:
+        raise UserConfigError(
+            f"Unknown tag_files key: {unknown[0]}. Allowed keys: ru, ru_plus, en, en_plus"
+        )
+
+    resolved = dict(defaults)
+    for key, value in raw.items():
+        if not isinstance(value, str) or not value.strip():
+            raise UserConfigError(f"Simple config field 'tag_files.{key}' must be a non-empty string path")
+        resolved[key] = value.strip()
+    return resolved
+
+
+def _resolve_mode_prompt_files(profile: dict[str, Any]) -> dict[str, str]:
+    defaults = {
+        "ru_free": "promts/ru_free.txt",
+        "ru_pool": "promts/ru_pool.txt",
+        "ru_pool_explained": "promts/ru_pool_explained.txt",
+        "en_free": "promts/en_free.txt",
+        "en_pool": "promts/en_pool.txt",
+        "en_pool_explained": "promts/en_pool_explained.txt",
+    }
+    raw = profile.get("mode_prompt_files")
+    if raw is None:
+        return defaults
+    if not isinstance(raw, dict):
+        raise UserConfigError("Simple config field 'mode_prompt_files' must be an object")
+    unknown = sorted([key for key in raw.keys() if key not in defaults])
+    if unknown:
+        raise UserConfigError(
+            "Unknown mode_prompt_files key: "
+            f"{unknown[0]}. Allowed keys: ru_free, ru_pool, ru_pool_explained, en_free, en_pool, en_pool_explained"
+        )
+    resolved = dict(defaults)
+    for key, value in raw.items():
+        if not isinstance(value, str) or not value.strip():
+            raise UserConfigError(f"Simple config field 'mode_prompt_files.{key}' must be a non-empty string path")
+        resolved[key] = value.strip()
+    return resolved
+
+
 def expand_user_config(profile: dict[str, Any], *, root_dir: Path, registry_path: Path | None = None) -> dict[str, Any]:
     _check_unknown_keys(profile)
 
@@ -134,6 +192,8 @@ def expand_user_config(profile: dict[str, Any], *, root_dir: Path, registry_path
     max_output_tokens = _optional_int(profile, "max_output_tokens", 4096)
     temperature = _optional_float(profile, "temperature", 0.0)
     recursive = _optional_bool(profile, "recursive", False)
+    tag_files = _resolve_tag_files(profile)
+    mode_prompt_files = _resolve_mode_prompt_files(profile)
 
     reg_path = registry_path or (root_dir / "models.registry.yaml")
     try:
@@ -162,10 +222,18 @@ def expand_user_config(profile: dict[str, Any], *, root_dir: Path, registry_path
         "output": {"results_dir": output_folder},
         "modes": modes,
         "pools": {
-            "ru_plain": "pools/ru_plain.txt",
-            "en_plain": "pools/en_plain.txt",
-            "ru_explained": "pools/ru_explained_ids.tsv",
-            "en_explained": "pools/en_explained_ids.tsv",
+            "ru_plain": tag_files["ru"],
+            "en_plain": tag_files["en"],
+            "ru_explained": tag_files["ru_plus"],
+            "en_explained": tag_files["en_plus"],
+        },
+        "prompt_files": {
+            "ru_free": mode_prompt_files["ru_free"],
+            "ru_pool": mode_prompt_files["ru_pool"],
+            "ru_pool_explained": mode_prompt_files["ru_pool_explained"],
+            "en_free": mode_prompt_files["en_free"],
+            "en_pool": mode_prompt_files["en_pool"],
+            "en_pool_explained": mode_prompt_files["en_pool_explained"],
         },
         "generation": {
             "temperature": temperature,

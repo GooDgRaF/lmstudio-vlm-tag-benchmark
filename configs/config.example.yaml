@@ -183,10 +183,18 @@ modes:
   - en_pool_explained
 
 pools:
-  ru_plain: "../pools/ru_plain.txt"
-  en_plain: "../pools/en_plain.txt"
-  ru_explained: "../pools/ru_explained_ids.tsv"
-  en_explained: "../pools/en_explained_ids.tsv"
+  ru_plain: "../promts/pools/ru_plain.txt"
+  en_plain: "../promts/pools/en_plain.txt"
+  ru_explained: "../promts/pools/ru_explained_ids.tsv"
+  en_explained: "../promts/pools/en_explained_ids.tsv"
+
+prompt_files:
+  ru_free: "../promts/ru_free.txt"
+  ru_pool: "../promts/ru_pool.txt"
+  ru_pool_explained: "../promts/ru_pool_explained.txt"
+  en_free: "../promts/en_free.txt"
+  en_pool: "../promts/en_pool.txt"
+  en_pool_explained: "../promts/en_pool_explained.txt"
 
 generation:
   temperature: 0.0

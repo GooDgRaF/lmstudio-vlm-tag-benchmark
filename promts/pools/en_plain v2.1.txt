@@ -1,0 +1,1186 @@
+# English visual tag pool v2.2 by semantic blocks
+
+## Tags by semantic block
+
+### people, roles, and groups (69)
+
+```text
+adult
+alchemist
+aristocrat
+artist
+assassin
+athlete
+baby
+barbarian
+bard
+blacksmith
+butler
+chef
+child
+couple
+crowd
+customer
+dancer
+delivery worker
+detective
+doctor
+driver
+druid
+elderly
+emperor
+empress
+family
+farmer
+fashion model
+female
+firefighter
+group
+human
+humanoid
+jester
+king
+knight
+mage
+maid
+male
+mechanic
+merchant
+musician
+necromancer
+nurse
+pair
+paramedic
+pilot
+police officer
+priest
+prince
+princess
+queen
+robber
+samurai
+scientist
+security guard
+similar people
+soldier
+student
+teacher
+teenager
+tourist
+twins
+unknown gender
+vendor
+waiter
+warrior
+worker
+writer
+```
+### animals, creatures, and beings (112)
+
+```text
+android
+angel
+animal
+ant
+bat
+bear
+bee
+beetle
+bird
+butterfly
+camel
+cat
+centaur
+cerberus
+chameleon
+chicken
+chimera
+cow
+crab
+crocodile
+crow
+cyber animal
+cyborg
+deer
+demon
+dog
+dolphin
+donkey
+dragon
+dragonfly
+dryad
+duck
+dwarf
+eagle
+elephant
+elf
+fairy
+firefly
+fish
+fox
+frog
+ghost
+giraffe
+goat
+goblin
+golem
+goose
+griffin
+hamster
+hawk
+hedgehog
+horse
+hummingbird
+insect
+jellyfish
+kangaroo
+koala
+lion
+lizard
+mantis
+mascot
+mecha
+mermaid
+mimic
+monkey
+moose
+mouse
+octopus
+orc
+otter
+owl
+panda
+panther
+parrot
+peacock
+pegasus
+penguin
+phoenix
+pig
+pigeon
+rabbit
+raccoon
+rat
+raven
+rhino
+robot
+scorpion
+seagull
+seal
+shark
+sheep
+skeleton
+slime
+snail
+snake
+sparrow
+spider
+spirit
+squirrel
+swan
+tiger
+turkey
+turtle
+unicorn
+vampire
+wasp
+werewolf
+whale
+wolf
+wyvern
+zebra
+zombie
+```
+### body, face, hair, and appearance (78)
+
+```text
+animal ears
+animal eyes
+arms
+back
+bald
+beard
+black hair
+blonde hair
+blue eyes
+blue hair
+bob cut
+brown eyes
+brown hair
+bun
+cat ears
+claws
+closed eyes
+curly hair
+dreadlocks
+expressive eyes
+eyes
+face
+fangs
+feathers
+feet
+fingers
+freckles
+fur
+gills
+glowing eyes
+glowing hair
+glowing markings
+green eyes
+green hair
+grey eyes
+grey hair
+hands
+heterochromia
+horns
+large eyes
+legs
+light blue hair
+long hair
+long nails
+makeup
+manicure
+medium hair
+mohawk
+mouth
+multicolored hair
+multiple eyes
+muscular
+mustache
+no pupils
+open mouth
+orange eyes
+piercing
+pink hair
+pointed ears
+ponytail
+purple eyes
+purple hair
+red eyes
+red hair
+scales
+scars
+short hair
+skin
+tail
+tattoos
+teeth
+tentacles
+third eye
+white hair
+wings
+wrinkles
+yellow eyes
+yellow hair
+```
+### emotions, expression, and mood (28)
+
+```text
+anger
+annoyance
+bored
+calm
+confused
+contempt
+crazy
+disgust
+embarrassment
+fear
+flirting
+focused
+happy
+indifferent
+laughter
+neutral expression
+pain
+proud
+sadness
+serious
+shy
+sleepy
+smile
+surprise
+tears
+thoughtful
+tired
+worried
+```
+### poses, actions, and interactions (88)
+
+```text
+back to viewer
+carrying
+catching
+climbing
+cooking
+crawling
+crossed legs
+crouching
+curled up
+cutting
+dancing
+digging
+drinking
+driving
+eating
+exercising
+falling
+fencing
+fighting
+flying
+hanging
+hanging on bar
+hanging on rope
+heart hands
+hitting
+holding
+holding hands
+hugging
+hunched
+jumping
+kissing
+kneeling
+leaning against tree
+leaning against wall
+looking at viewer
+looking away
+looking down
+looking up
+lotus pose
+lying
+lying on back
+lying on side
+lying on stomach
+opening
+peace sign
+playing music
+playing sports
+pointing
+posing
+pouring
+praying
+pulling
+pushing
+reaching
+reading
+reclining
+riding
+rolling
+running
+shooting
+shopping
+singing
+sitting
+sitting on chair
+sitting on edge
+sitting on floor
+sitting on throne
+sleeping
+sliding
+squatting
+standing
+standing on one leg
+standing straight
+stretching
+studying
+swimming
+taking photo
+talking
+throwing
+tongue out
+typing
+upside down
+waiting
+walking
+washing
+waving
+working
+writing
+```
+### clothing, armor, and accessories (90)
+
+```text
+amulet
+apron
+backpack
+bag
+bandages
+baseball cap
+belt
+beret
+blazer
+bodysuit
+boots
+bow
+bracelet
+briefcase
+business suit
+butler uniform
+cane
+cap
+chainmail
+choker
+cloak
+coat
+corset
+costume
+crown
+dress
+earbuds
+earring
+eye patch
+fan
+flower crown
+glasses
+gloves
+hairpin
+harness
+hat
+headband
+headphones
+helmet
+helmet visor
+hood
+hoodie
+jacket
+jeans
+kigurumi
+kimono
+lab coat
+life jacket
+maid uniform
+mask
+medical uniform
+military uniform
+monocle
+necklace
+overalls
+pajamas
+pants
+plate armor
+rain boots
+raincoat
+ring
+robe
+safety vest
+sandals
+scarf
+school uniform
+shirt
+shoes
+shorts
+skirt
+sleeves
+slippers
+sneakers
+socks
+sports uniform
+stockings
+suit
+suspenders
+sweater
+swimsuit
+t shirt
+tank top
+tie
+tights
+top
+umbrella
+uniform
+vest
+watch
+work uniform
+```
+### content flags, mature, and sensitive visuals (20)
+
+```text
+alcohol
+beer
+blood
+bra
+censored
+cigarette
+cocktail
+corpse
+garter
+gore
+injury
+naked
+nudity
+panties
+shirtless
+smoking
+suggestive
+topless
+underwear
+wine
+```
+### weapons, magic items, tools, and instruments (68)
+
+```text
+arrow
+assault rifle
+axe
+battle staff
+binoculars
+brush
+camera
+chain
+compass
+crossbow
+crystal ball
+dagger
+drill
+drum
+flamethrower
+flashlight
+flute
+grenade
+guitar
+hammer
+handcuffs
+harp
+katana
+key
+knife
+knuckles
+lute
+machine gun
+magic staff
+magic wand
+microphone
+microscope
+musical instrument
+needle
+paintbrush
+piano
+pickaxe
+pistol
+pliers
+quill
+rake
+revolver
+rifle
+saw
+scalpel
+screwdriver
+scroll
+scythe
+shield
+shotgun
+shovel
+shuriken
+speaker
+spear
+spellbook
+submachine gun
+sword
+syringe
+talisman
+tambourine
+telescope
+throwing knife
+tongs
+tool
+violin
+weapon
+whip
+wrench
+```
+### nature, landscape, plants, and weather (92)
+
+```text
+ashes
+aurora
+autumn
+beach
+black hole
+blizzard
+blood moon
+branch
+bubbles
+bush
+cactus
+cave
+cherry blossom
+cliff
+clouds
+day
+desert
+dew
+dust
+eclipse
+evening
+explosion
+fern
+field
+fire
+flower field
+flowers
+fog
+forest
+frost
+galaxy
+garden
+grass
+hill
+island
+jungle
+lake
+lava
+leaf
+leaves
+lightning
+meadow
+mist
+moon
+morning
+moss
+mountains
+mud
+night
+ocean
+overcast
+palm tree
+path
+planets
+plant
+pond
+rain
+rainbow
+river
+roots
+sand
+seaweed
+sky
+smoke
+snow
+snowy landscape
+soil
+space
+sparks
+spring
+starfall
+stars
+storm
+stream
+summer
+sun
+sunflower
+sunny
+sunrise
+sunset
+swamp
+thorns
+thunderstorm
+tree
+underwater
+valley
+vine
+volcano
+water
+waterfall
+wind
+winter
+```
+### places, architecture, and scenes (90)
+
+```text
+airport
+alley
+amusement park
+apartment
+arena
+balcony
+bar
+bathroom
+beach resort
+bedroom
+bridge
+building
+building interior
+bunker
+bus stop
+cafe
+castle
+cemetery
+church
+cinema
+city
+classroom
+clinic
+construction site
+corridor
+crosswalk
+crowded scene
+dining room
+driveway
+elevator
+empty scene
+escalator
+factory
+farm
+forge
+fountain
+garage
+gas station
+gym
+hall
+harbor
+highway
+hospital
+hotel
+house
+indoors
+intersection
+kitchen
+laboratory
+library
+lighthouse
+living room
+market
+museum
+office
+outdoors
+palace
+park
+parking lot
+pier
+platform
+playground
+restaurant
+road
+rooftop
+room
+rural
+school
+shop
+shopping mall
+sidewalk
+skyscraper
+sports field
+square
+stadium
+stairs
+statue
+store
+street
+subway station
+supermarket
+temple
+theater
+tower
+train platform
+train station
+urban
+village
+warehouse
+yard
+```
+### vehicles and transport (52)
+
+```text
+airplane
+ambulance
+bicycle
+boat
+bus
+car
+carriage
+cart
+construction vehicle
+delivery truck
+drone
+fire truck
+flying broom
+flying carpet
+helicopter
+hot air balloon
+hoverboard
+ice skates
+jet ski
+kayak
+license plate
+limousine
+motorcycle
+police car
+portal
+public transport
+quad bike
+rocket
+roller blades
+satellite
+scooter
+ship
+skateboard
+snowmobile
+spaceship
+speedboat
+submarine
+subway
+surfboard
+suv
+tank
+taxi
+tire
+tractor
+traffic cone
+train
+tram
+truck
+ufo
+van
+vehicle
+wheel
+```
+### household objects, furniture, and technology (107)
+
+```text
+basket
+bathtub
+bed
+bench
+blanket
+book
+bowl
+box
+broom
+bucket
+cabinet
+cable
+candle
+carpet
+ceiling
+chair
+charger
+chart
+clock
+coin
+computer
+computer mouse
+crystals
+curtain
+desk
+diagram
+display
+document
+door
+electronics
+fence
+flag
+floor
+fork
+furniture
+game controller
+gate
+globe
+headset
+icon
+keyboard
+lamp
+lantern
+laptop
+letter
+lighter
+mailbox
+map
+matches
+menu
+microphone stand
+microwave
+mirror
+monitor
+mug
+newspaper
+notebook
+number
+oven
+package
+pen
+pencil
+phone
+pillow
+pipe
+potted plant
+power outlet
+printer
+receipt
+refrigerator
+remote control
+rocks
+roof
+router
+rug
+screen
+shelf
+shower
+sign
+sink
+skull
+soap
+sofa
+spoon
+street sign
+suitcase
+symbol
+table
+tablet
+television
+text
+throne
+ticket
+toilet
+toothbrush
+towel
+toy
+traffic light
+trash can
+vase
+wall
+wallet
+wardrobe
+washing machine
+watermark
+whiteboard
+window
+```
+### food, drink, and kitchenware (48)
+
+```text
+apple
+banana
+berries
+bottle
+bread
+burger
+cake
+candy
+cheese
+chocolate
+coffee
+cookie
+cup
+dessert
+drink
+egg
+flask
+fries
+fruit
+hot dog
+ice cream
+juice
+lemon
+meat
+milk
+mushrooms
+noodles
+orange fruit
+pan
+pasta
+pastry
+pitcher
+pizza
+plate
+pot
+rice
+salad
+sandwich
+sausage
+seafood
+soup
+sushi
+taco
+tea
+teapot
+thermos
+vegetable
+wine glass
+```
+### sports, games, and hobbies (31)
+
+```text
+archery
+ball
+baseball
+basketball
+billiards
+board game
+bowling
+boxing
+camping
+chess
+cycling
+darts
+drawing
+fishing
+football
+gaming
+gardening
+golf
+hiking
+martial arts
+painting
+photography
+playing cards
+skating
+skiing
+snowboarding
+soccer
+surfing
+tennis
+volleyball
+yoga
+```
+### visual style, medium, and composition (68)
+
+```text
+3d render
+abstract
+aerial view
+album cover
+anime
+black and white
+blurry
+bokeh
+book cover
+cartoon
+character design
+close up
+comic
+concept art
+cropped
+cute
+cyberpunk
+depth of field
+digital art
+dramatic
+dutch angle
+first person view
+fisheye
+from behind
+full body
+group photo
+high angle
+illustration
+infographic
+ink
+isometric
+knee up
+landscape
+line art
+logo
+low angle
+low poly
+low resolution
+macro
+manga
+meme
+minimalism
+monochrome
+motion blur
+oil painting
+out of frame
+overexposed
+panorama
+photograph
+pixel art
+portrait
+poster
+realistic
+screenshot
+selfie
+semi realism
+sketch
+stained glass
+sticker
+symmetry
+text overlay
+ui
+underexposed
+vector art
+waist up
+watercolor
+website
+wide shot
+```
+### color, material, light, and surface (77)
+
+```text
+artificial light
+backlight
+beige
+black
+blue
+bright
+broken glass
+bronze
+brown
+ceramic
+checkered
+clean
+cluttered
+cold lighting
+copper
+cracked
+dark
+dirty
+dry
+dusty
+fabric
+flat
+giant
+glass
+glowing
+gold
+gradient
+green
+grey
+hard
+ice
+lantern light
+large
+leather
+lens flare
+light beams
+magic
+marble
+matte
+metal
+natural light
+neon
+orange
+paper
+pastel
+pattern
+pink
+plastic
+polished
+purple
+red
+reflection
+rough
+round
+rusty
+shadow
+shiny
+silhouette
+silver
+small
+smooth
+soft
+solid color
+sparkle
+spotted
+square shape
+stone
+striped
+tiny
+transparent
+transparent background
+triangular
+warm lighting
+wet
+white
+wood
+yellow
+```
