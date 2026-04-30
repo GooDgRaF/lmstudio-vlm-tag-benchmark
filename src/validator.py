@@ -146,7 +146,125 @@ def _extract_first_json_object(text: str) -> str | None:
 
 
 def _parse_line_values(raw_output: str) -> list[str]:
-    return [line.strip() for line in raw_output.splitlines() if line.strip()]
+    return _filter_line_tag_candidates(raw_output)[0]
+
+
+def _strip_line_markup(line: str) -> str:
+    value = line.strip()
+    value = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s*)", "", value).strip()
+    value = value.replace("**", "").replace("__", "").replace("`", "").strip()
+    value = value.strip(" \t\r\n.,;")
+    value = re.sub(r"\s*\([^)]*\)\s*$", "", value).strip()
+    return value.strip(" \t\r\n.,;")
+
+
+def _looks_like_reasoning_line(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return True
+    lower = text.lower()
+    if lower.strip(" :：") in {"tags", "tag", "теги", "тег"}:
+        return True
+    reasoning_markers = [
+        "thinking process",
+        "analysis of the image",
+        "image analysis",
+        "general analysis",
+        "analyze the image",
+        "obvious visible features",
+        "obvious features",
+        "the user wants",
+        "i must",
+        "i need",
+        "identify obvious objects",
+        "determine the main content",
+        "select initial",
+        "selecting the top",
+        "review against rules",
+        "these three capture",
+        "format",
+        "minimum",
+        "maximum",
+        "use only",
+        "short tags",
+        "one tag per line",
+        "at least",
+        "at most",
+        "no markdown",
+        "no explanations",
+        "процесс анализа",
+        "анализ изображения",
+        "пользователь предоставил",
+        "мне нужно",
+        "я должен",
+        "идентификация",
+        "определение признаков",
+        "выбор тегов",
+        "выбор тегов из списка",
+        "поиск тегов",
+        "проверка правил",
+        "проверка списка",
+        "проверка на достаточность",
+        "самые очевидные теги",
+        "дополнительные теги",
+        "первые 3",
+        "итоговый набор",
+        "формат ответа",
+        "минимум",
+        "максимум",
+        "сначала",
+        "не добавлять",
+        "использовать только",
+        "теги короткие",
+        "один тег",
+        "без markdown",
+        " - есть",
+    ]
+    if any(marker in lower for marker in reasoning_markers):
+        return True
+    words = re.findall(r"\w+", text, flags=re.UNICODE)
+    if len(text) > 80 or len(words) > 5:
+        return True
+    if text.endswith(":") and len(words) > 1:
+        return True
+    if "," in text and len(words) > 2:
+        return True
+    if "/" in text and len(words) > 3:
+        return True
+    if (":" in text or "." in text) and len(words) > 3:
+        return True
+    return False
+
+
+def _split_inline_tag_list(value: str) -> list[str]:
+    if ":" not in value:
+        return []
+    prefix, tail = value.split(":", 1)
+    if not re.search(r"\b(tags?|теги)\b", prefix, flags=re.IGNORECASE):
+        return []
+    parts = [part.strip(" \t\r\n.,;") for part in tail.split(",")]
+    return [part for part in parts if part and not _looks_like_reasoning_line(part)]
+
+
+def _filter_line_tag_candidates(raw_output: str) -> tuple[list[str], list[str]]:
+    tags: list[str] = []
+    ignored: list[str] = []
+    for raw_line in raw_output.splitlines():
+        raw_line = raw_line.strip()
+        if not raw_line:
+            continue
+        inline_tags = _split_inline_tag_list(_strip_line_markup(raw_line))
+        if inline_tags:
+            tags.extend(inline_tags)
+            continue
+        value = _strip_line_markup(raw_line)
+        if not value:
+            continue
+        if _looks_like_reasoning_line(value):
+            ignored.append(raw_line)
+            continue
+        tags.append(value)
+    return _unique_preserving_order(tags), ignored
 
 
 def _parse_line_ids(raw_output: str) -> list[str]:
@@ -213,7 +331,19 @@ def _parse_response_values(
             )
 
         if allow_line_fallback:
-            tags = _unique_preserving_order(_parse_line_values(raw_output))
+            tags, ignored = _filter_line_tag_candidates(raw_output)
+            if not tags and ignored:
+                return ParsedValues(
+                    tags=[],
+                    ids=[],
+                    parse_ok=False,
+                    schema_ok=False,
+                    json_extracted=json_extracted,
+                    line_fallback_used=True,
+                    error_type="parse_error",
+                    error="Response contained reasoning prose but no line tags",
+                    response_format_used="line_tags",
+                )
             return ParsedValues(
                 tags=tags,
                 ids=[],
@@ -239,7 +369,19 @@ def _parse_response_values(
         )
 
     if expected_format == "line_tags":
-        tags = _unique_preserving_order(_parse_line_values(raw_output))
+        tags, ignored = _filter_line_tag_candidates(raw_output)
+        if not tags and ignored:
+            return ParsedValues(
+                tags=[],
+                ids=[],
+                parse_ok=False,
+                schema_ok=False,
+                json_extracted=False,
+                line_fallback_used=False,
+                error_type="parse_error",
+                error="Response contained reasoning prose but no line tags",
+                response_format_used="line_tags",
+            )
         return ParsedValues(
             tags=tags,
             ids=[],

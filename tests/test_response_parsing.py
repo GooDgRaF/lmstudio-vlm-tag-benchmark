@@ -66,6 +66,52 @@ def test_line_tags_parses_as_primary_format(tmp_path):
     assert out["response_format_used"] == "line_tags"
 
 
+def test_line_tags_filters_reasoning_prose_and_keeps_tag_candidates(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output=(
+            "Thinking Process:\n"
+            "1. **Analyze the image:** The image contains pixel art weapons.\n"
+            "2. **Obvious tags:** axe, sword\n"
+            "3. Sword\n"
+            "Pixel art\n"
+            "This long sentence is an explanation and should not become a tag."
+        ),
+        mode="en_free",
+        requested_response_format="line_tags",
+    )
+    assert out["parse_ok"] is True
+    assert out["accepted_tags"] == ["axe", "sword", "Sword", "Pixel art"]
+    assert "Thinking Process:" not in out["accepted_tags"]
+
+
+def test_line_tags_strips_trailing_parenthetical_notes(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output="кот (животное).\nсобака (питомец)",
+        mode="ru_pool",
+        requested_response_format="line_tags",
+    )
+    assert out["accepted_tags"] == ["кот", "собака"]
+    assert out["rejected_tags"] == []
+
+
+def test_line_tags_reasoning_only_is_parse_error(tmp_path):
+    out = _normalize(
+        tmp_path,
+        raw_output=(
+            "General analysis of the image:\n"
+            "The image is a pixel art representation of a game item display."
+        ),
+        mode="en_pool",
+        requested_response_format="line_tags",
+    )
+    assert out["parse_ok"] is False
+    assert out["error_type"] == "parse_error"
+    assert out["accepted_tags"] == []
+    assert out["rejected_tags"] == []
+
+
 def test_duplicates_removed_order_preserved(tmp_path):
     out = _normalize(
         tmp_path,

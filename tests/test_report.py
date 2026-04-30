@@ -45,6 +45,15 @@ def _write_summary(path, rows):
         "context_near_limit",
         "context_overflow",
         "output_truncated",
+        "final_content_empty",
+        "final_content_length",
+        "reasoning_content_present",
+        "reasoning_content_length",
+        "reasoning_tokens",
+        "no_final_answer",
+        "normalization_error_type",
+        "tokens_per_second",
+        "time_to_first_token_seconds",
         "gpu_memory_before_mb",
         "gpu_memory_after_mb",
         "error_type",
@@ -173,9 +182,9 @@ def test_report_matrix_and_escape(tmp_path):
     assert "RU free" in html
     assert "class='chip free'" in html
     assert "class='chip warn'" in html
+    assert "class='chip error'>request_error" in html
     assert "<div class='label'>" not in html
     assert ">pool violation<" not in html
-    assert "request_error" not in html
     assert "&lt;boom&gt;" not in html
     assert "Diagnostics report" in html
     assert "prompt_tokens" not in html
@@ -339,6 +348,65 @@ def test_pool_matches_are_green_and_pool_failures_not_rendered_as_text(tmp_path)
     assert "class='chip ok'>Human" in html
     assert "class='chip warn'>Invented" in html
     assert "pool_validation_failed" not in html
+
+
+def test_report_uses_separate_error_color_and_hides_reasoning_prose(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    image = run_dir / "img.jpg"
+    image.write_bytes(b"\xff\xd8\xff\xd9")
+    (run_dir / "run_config.yaml").write_text("modes:\n  - en_pool\n", encoding="utf-8")
+
+    _write_summary(
+        run_dir / "summary.csv",
+        [
+            {
+                "run_id": "run",
+                "request_id": "r1",
+                "model_id": "m",
+                "base_model_id": "b",
+                "model_label": "model-a",
+                "params": "4B",
+                "quant": "Q4",
+                "quant_bits": "4",
+                "image_id": "image-1",
+                "image_path": str(image),
+                "image_rel_path": "ImgToTag/img.jpg",
+                "mode": "en_pool",
+                "prompt_version": "v2",
+                "response_format_requested": "line_tags",
+                "response_format_used": "line_tags",
+                "accepted_tags": "[]",
+                "accepted_ids": "[]",
+                "rejected_tags": '["Thinking Process:", "OutsidePool"]',
+                "rejected_ids": "[]",
+                "tag_count": "0",
+                "pool_violations": "1",
+                "parse_ok": "false",
+                "schema_ok": "false",
+                "json_extracted": "false",
+                "line_fallback_used": "false",
+                "pool_ok": "false",
+                "latency_sec": "1.0",
+                "prompt_tokens": "1",
+                "completion_tokens": "1",
+                "total_tokens": "2",
+                "requested_context_length": "16000",
+                "actual_context_length": "16000",
+                "context_near_limit": "false",
+                "context_overflow": "false",
+                "output_truncated": "false",
+                "no_final_answer": "true",
+                "error_type": "no_final_answer",
+                "error": "REST response did not contain a non-empty final message",
+            }
+        ],
+    )
+
+    html = build_report(run_dir).read_text(encoding="utf-8")
+    assert "class='chip error'>no final answer" in html
+    assert "class='chip warn'>OutsidePool" in html
+    assert "Thinking Process:" not in html
 
 
 def test_diagnostics_html_and_cross_links(tmp_path):

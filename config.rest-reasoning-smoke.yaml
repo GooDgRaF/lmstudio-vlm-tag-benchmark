@@ -5,29 +5,29 @@ lmstudio:
   api_key: "lm-studio"
 
 models:
-  - id: "qwen/qwen3.5-9b@q4_k_m"
-    base_model_id: "qwen/qwen3.5-9b"
-    label: "qwen3_5-9b-q4_k_m-think"
+  - id: "google/gemma-4-e2b@q8_0"
+    base_model_id: "google/gemma-4-e2b"
+    label: "gemma-4-e2b-q8_0-think"
     reasoning: "on"
-    display_name: "Qwen3.5 9B"
-    params: "9B"
-    architecture: "qwen35"
-    quant: "Q4_K_M"
-    quant_bits: 4
-    size_bytes: 6548927017
-    max_context_length: 262144
+    display_name: "Gemma 4 E2B"
+    params: "4.6B"
+    architecture: "gemma4"
+    quant: "Q8_0"
+    quant_bits: 8
+    size_bytes: 5127200000
+    max_context_length: 32768
 
-  - id: "qwen/qwen3.5-9b@q4_k_m"
-    base_model_id: "qwen/qwen3.5-9b"
-    label: "qwen3_5-9b-q4_k_m-no-think"
+  - id: "google/gemma-4-e2b@q8_0"
+    base_model_id: "google/gemma-4-e2b"
+    label: "gemma-4-e2b-q8_0-no-think"
     reasoning: "off"
-    display_name: "Qwen3.5 9B"
-    params: "9B"
-    architecture: "qwen35"
-    quant: "Q4_K_M"
-    quant_bits: 4
-    size_bytes: 6548927017
-    max_context_length: 262144
+    display_name: "Gemma 4 E2B"
+    params: "4.6B"
+    architecture: "gemma4"
+    quant: "Q8_0"
+    quant_bits: 8
+    size_bytes: 5127200000
+    max_context_length: 32768
 
 input:
   image_dir: "ImgToTag_largest"

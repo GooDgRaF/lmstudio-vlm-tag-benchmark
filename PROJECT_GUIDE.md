@@ -214,6 +214,7 @@ en_pool_explained
 - parser продолжает поддерживать `strict_json` для обратной совместимости и альтернативных конфигов;
 - explained modes ожидают ID тегов;
 - теги вне pool сохраняются в rejected-полях;
+- line-parser отбрасывает служебные строки рассуждения/пояснений, если модель вернула их внутри `final_content`;
 - `pool_validation_failed` в summary означает диагностированное нарушение pool-режима.
 
 ## Результаты
@@ -241,6 +242,7 @@ results/<run_id>/
 
 - `report.html` — первая точка входа после запуска (answer matrix для сравнения моделей по image x mode);
 - `report.html` также показывает компактный timing-summary и корректно печатается через браузерный print preview;
+- `report.html` использует разные цвета для free-mode тегов, совпадений с pool, out-of-pool тегов и ошибок вроде `no_final_answer`;
 - `summary.csv` — таблица по всем запросам;
 - `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
 - `normalized/<request_id>.json` хранит отдельно `final_content` и `reasoning_content`; теги парсятся только из `final_content`;

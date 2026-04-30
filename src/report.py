@@ -3,6 +3,7 @@
 import csv
 import html
 import json
+import re
 import statistics
 from pathlib import Path
 from typing import Any
@@ -120,18 +121,111 @@ def _render_chip(text: str, css_class: str) -> str:
     return f"<span class='chip {css_class}'>{html.escape(text)}</span>"
 
 
+def _clean_display_tag(value: str) -> str:
+    text = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s*|\+\s*)", "", value.strip()).strip()
+    text = text.replace("**", "").replace("__", "").replace("`", "").strip()
+    text = text.strip(" \t\r\n.,;")
+    text = re.sub(r"\s*\([^)]*\)\s*$", "", text).strip()
+    return text.strip(" \t\r\n.,;")
+
+
 def _looks_like_reasoning_prose(value: str) -> bool:
-    text = value.strip()
+    original = value.strip()
+    text = _clean_display_tag(original)
     if not text:
         return False
     lower = text.lower()
-    if "thinking process" in lower:
+    if lower.strip(" :：") in {"tags", "tag", "теги", "тег"}:
+        return True
+    markers = [
+        "thinking process",
+        "analysis of the image",
+        "image analysis",
+        "general analysis",
+        "analyze the image",
+        "obvious visible features",
+        "obvious features",
+        "the user wants",
+        "i must",
+        "i need",
+        "selecting the top",
+        "identify obvious objects",
+        "determine the main content",
+        "review against rules",
+        "these three capture",
+        "format",
+        "minimum",
+        "maximum",
+        "use only",
+        "short tags",
+        "one tag per line",
+        "no markdown",
+        "процесс анализа",
+        "анализ изображения",
+        "пользователь предоставил",
+        "мне нужно",
+        "я должен",
+        "слева от",
+        "справа от",
+        "идентификация",
+        "определение признаков",
+        "выбор тегов",
+        "выбор тегов из списка",
+        "поиск тегов",
+        "проверка правил",
+        "проверка",
+        "проверка списка",
+        "проверка на достаточность",
+        "проверка по правилам",
+        "очевидные признаки",
+        "три самых очевидных",
+        "самые очевидные теги",
+        "дополнительные теги",
+        "первые 3",
+        "итоговый набор",
+        "формат ответа",
+        "минимум",
+        "максимум",
+        "сначала",
+        "не добавлять",
+        "использовать только",
+        "теги короткие",
+        "один тег",
+        "без markdown",
+        " - есть",
+    ]
+    if any(marker in lower for marker in markers):
         return True
     if len(text) > 80:
         return True
-    if text.count(" ") >= 6 and (":" in text or "." in text):
+    words = text.split()
+    if re.match(r"^\d+[.)]\s*", original) and len(words) > 1:
+        return True
+    if re.match(r"^\s*[-*+]\s+", original) and len(words) > 1:
+        return True
+    if len(words) > 5:
+        return True
+    if "," in text and len(words) > 2:
+        return True
+    if "/" in text and len(words) > 3:
+        return True
+    if text.count(" ") >= 5 and (":" in text or "." in text):
         return True
     return False
+
+
+def _render_tag_chips(values: list[str], css_class: str) -> list[str]:
+    chips: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if _looks_like_reasoning_prose(value):
+            continue
+        text = _clean_display_tag(value)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        chips.append(_render_chip(text, css_class))
+    return chips
 
 
 def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
@@ -142,11 +236,14 @@ def _render_answer_cell(cell: dict[str, Any] | None, mode: str) -> str:
     rejected_tags = cell.get("rejected_tags") or []
     rejected_ids = cell.get("rejected_ids") or []
     accepted_class = "free" if mode.endswith("_free") else "ok"
+    error_type = str(cell.get("error_type") or "").strip()
     chips: list[str] = []
     if str(cell.get("no_final_answer") or "").lower() in {"true", "1", "yes"}:
-        chips.append(_render_chip("no final answer", "warn"))
-    chips.extend(_render_chip(tag, accepted_class) for tag in accepted if not _looks_like_reasoning_prose(tag))
-    chips.extend(_render_chip(tag, "warn") for tag in rejected_tags)
+        chips.append(_render_chip("no final answer", "error"))
+    elif error_type and error_type != "pool_validation_failed":
+        chips.append(_render_chip(error_type, "error"))
+    chips.extend(_render_tag_chips(accepted, accepted_class))
+    chips.extend(_render_tag_chips(rejected_tags, "warn"))
     chips.extend(_render_chip(tag, "warn mono") for tag in rejected_ids)
     if not chips:
         return ""
@@ -391,6 +488,7 @@ def build_report(run_dir: Path) -> Path:
     .chip.free {{ background: #eef2ff; border-color: #c7d2fe; }}
     .chip.ok {{ background: #ecfdf3; border-color: #bbf7d0; color: #166534; }}
     .chip.warn {{ background: #fef2f2; border-color: #fecaca; color: #991b1b; }}
+    .chip.error {{ background: #fff7ed; border-color: #fed7aa; color: #9a3412; }}
     .chip.mono {{ font-family: Consolas, monospace; }}
     .group {{ margin-bottom: 6px; }}
     .label {{ font-size: 11px; color: #475569; margin-bottom: 3px; text-transform: lowercase; }}
@@ -440,6 +538,7 @@ def build_report(run_dir: Path) -> Path:
     <span>{_render_chip('free-mode tag', 'free')}</span>
     <span>{_render_chip('pool match', 'ok')}</span>
     <span>{_render_chip('out of pool', 'warn')}</span>
+    <span>{_render_chip('request error', 'error')}</span>
     <span>Empty cells mean no rendered tags for that request.</span>
   </div>
   <div class='table-wrap'>
