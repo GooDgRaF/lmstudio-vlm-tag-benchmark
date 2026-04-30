@@ -251,11 +251,16 @@ class LMStudioClient:
         return self._request("POST", f"{self.api_base_url}/chat", json=body)
 
 
-def build_rest_input_items(prompt: str, image_data_url: str) -> list[dict[str, Any]]:
-    return [
-        {"type": "text", "content": prompt},
-        {"type": "image", "data_url": image_data_url},
-    ]
+def build_rest_input_items(system_prompt: str, user_prompt: str, image_data_url: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    if system_prompt.strip():
+        # LM Studio REST /chat currently supports only text|image input items.
+        # We place system instructions as the first text item.
+        items.append({"type": "text", "content": f"[SYSTEM]\n{system_prompt.strip()}"})
+    if user_prompt.strip():
+        items.append({"type": "text", "content": user_prompt.strip()})
+    items.append({"type": "image", "data_url": image_data_url})
+    return items
 
 
 def normalize_rest_chat_response(

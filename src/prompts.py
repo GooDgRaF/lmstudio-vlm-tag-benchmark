@@ -13,6 +13,8 @@ PROMPT_VERSION = "v2"
 class PromptBuildResult:
     mode: str
     language: str
+    system_prompt: str
+    user_prompt: str
     prompt: str
     prompt_version: str
     response_format_requested: str
@@ -68,16 +70,19 @@ def build_prompt(cfg: BenchmarkConfig, mode: str, pools: TagPools) -> PromptBuil
     header = _render_mode_header(cfg, mode)
     if mode.endswith("_pool_explained"):
         pool_text = pools.explained_prompt_text(language)
-        prompt = f"{header}\n\n{pool_text}"
+        user_prompt = pool_text
     elif mode.endswith("_pool"):
         pool = pools.ru_plain if language == "ru" else pools.en_plain
         pool_text = "\n".join(pool)
-        prompt = f"{header}\n\n{pool_text}"
+        user_prompt = pool_text
     else:
-        prompt = header
+        user_prompt = ""
+    prompt = f"{header}\n\n{user_prompt}".strip() if user_prompt else header
     return PromptBuildResult(
         mode=mode,
         language=language,
+        system_prompt=header,
+        user_prompt=user_prompt,
         prompt=prompt,
         prompt_version=PROMPT_VERSION,
         response_format_requested=response_format_for_mode(cfg, mode),

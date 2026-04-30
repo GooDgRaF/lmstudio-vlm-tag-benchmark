@@ -93,8 +93,8 @@ def _run_smoke_test(
 ) -> dict[str, Any]:
     if image is None:
         return {"ok": False, "error": "No images found for smoke test"}
-    prompt = "Return one short tag for this image."
-    input_items = build_rest_input_items(prompt, _to_data_url(image.image_path))
+    system_prompt = "Return one short tag for this image."
+    input_items = build_rest_input_items(system_prompt, "", _to_data_url(image.image_path))
     try:
         completion = client.chat_rest(
             model_id=runtime_model_id,
@@ -521,7 +521,11 @@ def run_benchmark(
                 try:
                     completion_payload = client.chat_rest(
                         model_id=loaded.instance_id,
-                        input_items=build_rest_input_items(prompt.prompt, _to_data_url(image_path)),
+                        input_items=build_rest_input_items(
+                            prompt.system_prompt,
+                            prompt.user_prompt,
+                            _to_data_url(image_path),
+                        ),
                         temperature=cfg.generation.temperature,
                         top_p=cfg.generation.top_p,
                         max_output_tokens=cfg.generation.max_tokens,
