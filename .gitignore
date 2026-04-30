@@ -189,3 +189,7 @@ models.registry.yaml
 /.tmp
 *.png
 *.jpg
+/models
+
+/models/*
+!/models/.gitkeep
