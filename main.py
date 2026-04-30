@@ -9,7 +9,7 @@ from src.collect import collect_run, ensure_collected
 from src.image_loader import discover_images
 from src.init_config import InitConfigError, render_user_config, write_user_config
 from src.lmstudio_client import LMStudioClient, LMStudioClientError
-from src.model_registry import refresh_registry
+from src.model_registry import ModelRegistryError, list_registry_labels, load_registry, refresh_registry
 from src.report import build_diagnostics_report, build_report
 from src.runner import run_benchmark
 from src.validator import ValidationError, validate_config
@@ -55,32 +55,46 @@ def cmd_init_config(args: argparse.Namespace) -> int:
 
 
 def cmd_list_models(args: argparse.Namespace) -> int:
-    cfg = _load_validated_config(args.config)
-    client = LMStudioClient.from_config(cfg)
     try:
-        models = client.list_models()
-    except LMStudioClientError as exc:
-        raise SystemExit(str(exc)) from exc
+        registry = load_registry()
+    except ModelRegistryError:
+        print("models.registry.yaml not found. Run `python main.py init-config` or `python main.py refresh-models` first.")
+        return 0
 
-    print(f"LM Studio models: {len(models)}")
-    for model in models:
-        model_id = (
-            model.get("id")
-            or model.get("model_id")
-            or model.get("selected_variant")
-            or model.get("key")
-            or "<unknown>"
-        )
-        print(f"- {model_id}")
+    labels = list_registry_labels(registry)
+    print("Available model labels:")
+    for label in labels:
+        print(f"- {label}")
+    if args.verbose:
+        print("")
+        print("Details:")
+        for item in registry.models:
+            label = item.get("label")
+            model_id = item.get("id")
+            reasoning = item.get("reasoning")
+            params = item.get("params")
+            quant = item.get("quant")
+            max_ctx = item.get("max_context_length")
+            print(f"- {label}: id={model_id}, reasoning={reasoning}, params={params}, quant={quant}, max_ctx={max_ctx}")
     return 0
 
 
 def cmd_dry_run(args: argparse.Namespace) -> int:
     cfg = _load_validated_config(args.config)
     images = discover_images(cfg, limit=args.limit)
-    print(f"Models configured: {len(cfg.models)}")
-    print(f"Modes configured: {len(cfg.modes)} ({', '.join(cfg.modes)})")
+    print(f"Config: {args.config}")
     print(f"Images discovered: {len(images)}")
+    print(f"Models selected: {len(cfg.models)}")
+    print(f"Modes selected: {len(cfg.modes)}")
+    print(f"Total requests: {len(images) * len(cfg.models) * len(cfg.modes)}")
+    print("")
+    print("Models:")
+    for model in cfg.models:
+        print(f"- {model.label}")
+    print("")
+    print("Modes:")
+    for mode in cfg.modes:
+        print(f"- {mode}")
     return 0
 
 
@@ -116,6 +130,19 @@ def cmd_collect(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_refresh_models(args: argparse.Namespace) -> int:
+    try:
+        registry = refresh_registry()
+    except LMStudioClientError:
+        raise SystemExit(
+            "Failed to connect to LM Studio at http://localhost:1234/api/v1.\n"
+            "Start LM Studio server and run `python main.py refresh-models` again."
+        )
+    print("Model registry written: models.registry.yaml")
+    print(f"Registry entries: {len(registry.models)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Local VLM image tagger benchmark")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -130,8 +157,11 @@ def build_parser() -> argparse.ArgumentParser:
     init_config.add_argument("--images-folder", default="ImgToTag")
     init_config.set_defaults(func=cmd_init_config)
 
-    list_models = sub.add_parser("list-models", help="List models from LM Studio")
-    list_models.add_argument("--config", required=True)
+    refresh_models = sub.add_parser("refresh-models", help="Refresh generated model registry from LM Studio")
+    refresh_models.set_defaults(func=cmd_refresh_models)
+
+    list_models = sub.add_parser("list-models", help="List model labels from models.registry.yaml")
+    list_models.add_argument("--verbose", action="store_true")
     list_models.set_defaults(func=cmd_list_models)
 
     dry_run = sub.add_parser("dry-run", help="Validate inputs and print run plan")
