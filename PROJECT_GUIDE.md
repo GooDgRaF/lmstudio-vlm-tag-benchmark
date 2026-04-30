@@ -28,6 +28,30 @@ python main.py run --config config.smoke.yaml
 
 `config.smoke.yaml` содержит одну модель и `limit_images: 1`, поэтому он подходит для ежедневной проверки пайплайна.
 
+## Human-friendly config workflow
+
+Основной пользовательский путь:
+
+```bash
+python main.py init-config
+python main.py dry-run --config config.yaml
+python main.py run --config config.yaml
+```
+
+Ключевые файлы:
+
+```text
+config.yaml                  user-edited simple config
+models.registry.yaml         generated model label registry
+models/lmstudio-models.raw.json
+models/models.active.yaml
+models/models.excluded.yaml
+config.example.yaml          full internal/advanced example
+config.smoke.yaml            legacy smoke/full-shape config
+```
+
+Simple config автоматически расширяется во внутренний full config (`BenchmarkConfig`) перед валидацией и запуском runner.
+
 Для полного прогона используйте:
 
 ```bash
@@ -66,7 +90,9 @@ tests/                pytest-тесты
 ```bash
 python main.py validate-config --config config.smoke.yaml
 python main.py dry-run --config config.smoke.yaml
-python main.py list-models --config config.smoke.yaml
+python main.py init-config
+python main.py refresh-models
+python main.py list-models
 python main.py run --config config.smoke.yaml
 python main.py run --config config.smoke.yaml --run-id smoke-001
 python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
@@ -78,7 +104,9 @@ python main.py report --run results/<run_id>
 
 - `validate-config` — после изменения YAML-конфигов, путей, моделей, режимов, pools.
 - `dry-run` — перед запуском benchmark, чтобы увидеть количество моделей, режимов и картинок.
-- `list-models` — когда нужно проверить доступность LM Studio API и список моделей.
+- `init-config` — генерирует `models.registry.yaml` и user-facing `config.yaml`.
+- `refresh-models` — обновляет модельный реестр без изменения `config.yaml`.
+- `list-models` — показывает доступные label из `models.registry.yaml`.
 - `run` — основной запуск benchmark; при `report.generate_html: true` создает HTML-отчет автоматически.
 - `run --run-id <id>` — продолжить/повторить конкретный run-каталог с манифестом запросов.
 - `run --force-lock` — снять stale `run.lock` после аварийного завершения.
@@ -154,12 +182,16 @@ input:
 Основные файлы:
 
 ```text
+models.registry.yaml
 models/models.active.yaml
 models/models.excluded.yaml
 models/lmstudio-models.raw.json
 ```
 
-`models.active.yaml` содержит model variants, используемые в полном конфиге. `models.excluded.yaml` хранит модели, которые не входят в benchmark, с причинами исключения. `lmstudio-models.raw.json` — исходный экспорт из LM Studio.
+`models.registry.yaml` — источник user-facing labels для `config.yaml`.  
+`models.active.yaml` содержит автоматически отобранные candidates.  
+`models.excluded.yaml` хранит исключённые модели с причинами.  
+`lmstudio-models.raw.json` — сырой экспорт из LM Studio.
 
 В runtime модель загружается через `src/lmstudio_client.py`, затем запросы отправляются в загруженный `instance_id` через REST Chat. Это удерживает benchmark на одном явно загруженном инстансе и снижает риск неявной второй загрузки в LM Studio.
 
@@ -305,10 +337,19 @@ python -m pytest -q
 
 ### Добавить модель
 
-1. Добавьте модель в `models/models.active.yaml`.
-2. Добавьте соответствующий блок в нужный конфиг.
-3. Проверьте `max_context_length`, `params`, `quant`, `quant_bits`.
-4. Запустите:
+1. Обновите реестр:
+
+```bash
+python main.py refresh-models
+```
+
+2. Перегенерируйте user config при необходимости:
+
+```bash
+python main.py init-config --force
+```
+
+3. Проверьте dry-run/run.
 
 ```bash
 python main.py validate-config --config config.example.yaml

@@ -10,11 +10,19 @@ Completed specs are stored in `archive/`. Active and future specs live in this f
 
 Current active/future specs:
 
-- `25-rest-reasoning-profiles-and-e2e.md` - REST reasoning profiles, smoke honesty, truncation fixes, and live e2e validation.
+- `26-model-registry.md` - generated LM Studio model inventory and user-facing model registry.
+- `27-init-config.md` - generated human-friendly `config.yaml`.
+- `28-user-config-expansion.md` - expand user run profile into the internal `BenchmarkConfig`.
+- `29-cli-and-workflow.md` - CLI workflow updates around init/refresh/list/dry-run.
+- `30-tests-and-docs.md` - tests, docs, and migration cleanup.
 
 Recommended implementation order from the current state:
 
-1. `25-rest-reasoning-profiles-and-e2e.md`
+1. `26-model-registry.md`
+2. `27-init-config.md`
+3. `28-user-config-expansion.md`
+4. `29-cli-and-workflow.md`
+5. `30-tests-and-docs.md`
 
 ## Workflow
 

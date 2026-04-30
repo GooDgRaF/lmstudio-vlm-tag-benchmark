@@ -5,7 +5,7 @@ CLI-проект для сравнения локальных vision-language м
 Основной сценарий:
 
 ```text
-ImgToTag/ -> python main.py run --config config.smoke.yaml -> results/<run_id>/report.html
+ImgToTag/ -> python main.py init-config -> python main.py run --config config.yaml -> results/<run_id>/report.html
 ```
 
 Проект ориентирован на воспроизводимый локальный benchmark: он загружает выбранные модели, отправляет изображения с промптами через LM Studio REST Chat (`/api/v1/chat`), сохраняет сырые ответы, нормализованные результаты, CSV-сводку и статический HTML-отчет.
@@ -14,13 +14,25 @@ ImgToTag/ -> python main.py run --config config.smoke.yaml -> results/<run_id>/r
 
 1. Запустите LM Studio server на `localhost:1234`.
 2. Положите изображения в папку `ImgToTag/`.
-3. Выполните smoke-прогон:
+3. Сгенерируйте пользовательский конфиг:
 
 ```bash
-python main.py run --config config.smoke.yaml
+python main.py init-config
 ```
 
-Smoke-конфиг использует одну модель и одну картинку. Это основной быстрый способ проверить вертикальный слайс проекта без полного прогона всех моделей.
+4. Проверьте план:
+
+```bash
+python main.py dry-run --config config.yaml
+```
+
+5. Запустите benchmark:
+
+```bash
+python main.py run --config config.yaml
+```
+
+`config.yaml` — основной user-facing конфиг: модели и режимы уже перечислены под `models:` и `modes:`. Достаточно комментировать/раскомментировать элементы списка без copy-paste.
 
 После завершения откройте:
 
@@ -31,16 +43,19 @@ results/<run_id>/report.html
 ## Основные команды
 
 ```bash
-python main.py validate-config --config config.smoke.yaml
-python main.py dry-run --config config.smoke.yaml
-python main.py run --config config.smoke.yaml
-python main.py run --config config.smoke.yaml --run-id smoke-001
-python main.py run --config config.smoke.yaml --run-id smoke-001 --force-lock
+python main.py init-config
+python main.py refresh-models
+python main.py list-models
+python main.py validate-config --config config.yaml
+python main.py dry-run --config config.yaml
+python main.py run --config config.yaml
+python main.py run --config config.yaml --run-id smoke-001
+python main.py run --config config.yaml --run-id smoke-001 --force-lock
 python main.py collect --run results/<run_id>
 python main.py report --run results/<run_id>
 ```
 
-Для полного набора моделей используется:
+Для advanced/internal full-shape профилей остаются:
 
 ```bash
 python main.py dry-run --config config.example.yaml --limit 1
@@ -63,6 +78,15 @@ python main.py run --config config.rest-reasoning-smoke.yaml --run-id rest-reaso
 - [AGENTS.md](AGENTS.md) — инструкция для coding agents: что читать и какие проверки запускать.
 - [specs/README.md](specs/README.md) — workflow спецификаций.
 - [pools/README.md](pools/README.md) — форматы файлов tag pools.
+
+## Двухуровневая конфигурация
+
+Проект поддерживает два уровня:
+
+- `config.yaml` — простой пользовательский профиль запуска;
+- full internal config — развёрнутый словарь, который автоматически строится из `config.yaml` и потребляется текущим `BenchmarkConfig`/runner.
+
+LM Studio URL в simple-config не настраивается: используются дефолты `http://localhost:1234/api/v1` и `http://localhost:1234/v1`.
 
 ## Что сравнивается
 

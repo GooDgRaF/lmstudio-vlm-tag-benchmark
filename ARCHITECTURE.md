@@ -545,3 +545,18 @@ run_id,request_id,model_id,base_model_id,model_label,params,quant,quant_bits,ima
 - автоматические метрики качества без эталонной разметки.
 
 Проект должен остаться простым.
+
+## Config Levels (Update)
+
+The project now has two config levels:
+1. human-friendly `config.yaml`, edited by the user;
+2. full internal config dict, produced by expansion and consumed by the existing runner.
+
+Simple `config.yaml` does not expose LM Studio endpoint fields. The defaults are in code:
+- `http://localhost:1234/api/v1`
+- `http://localhost:1234/v1`
+
+Main inference transport remains:
+- `POST /api/v1/chat`
+
+Model reasoning mode is resolved from `models.registry.yaml` field `reasoning` and not inferred from label suffixes.
