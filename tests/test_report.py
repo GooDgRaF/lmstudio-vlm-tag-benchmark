@@ -560,7 +560,7 @@ def test_report_top_summary_and_print_css(tmp_path):
     assert "run: run" in html
     assert "completion: partial" not in html
     assert "avg req latency" not in html
-    assert "Model headers: total latency." in html
+    assert "Model headers: total latency / average latency for EN free." in html
     assert "1.25s" in html
     assert "@media print" in html
 

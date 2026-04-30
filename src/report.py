@@ -368,6 +368,10 @@ def build_report(run_dir: Path) -> Path:
 
     model_latency_totals: dict[str, float] = {}
     model_mode_latencies: dict[tuple[str, str], list[float]] = {}
+    model_prompt_tokens_sum: dict[str, int] = {}
+    model_prompt_tokens_count: dict[str, int] = {}
+    model_completion_tokens_sum: dict[str, int] = {}
+    model_completion_tokens_count: dict[str, int] = {}
     for row in rows:
         model = str(row.get("model_label") or "").strip()
         if not model:
@@ -378,29 +382,45 @@ def build_report(run_dir: Path) -> Path:
             model_latency_totals[model] = model_latency_totals.get(model, 0.0) + latency
             if mode:
                 model_mode_latencies.setdefault((model, mode), []).append(latency)
+        prompt_tokens = _to_int(row.get("prompt_tokens"), default=-1)
+        if prompt_tokens >= 0:
+            model_prompt_tokens_sum[model] = model_prompt_tokens_sum.get(model, 0) + prompt_tokens
+            model_prompt_tokens_count[model] = model_prompt_tokens_count.get(model, 0) + 1
+        completion_tokens = _to_int(row.get("completion_tokens"), default=-1)
+        if completion_tokens >= 0:
+            model_completion_tokens_sum[model] = model_completion_tokens_sum.get(model, 0) + completion_tokens
+            model_completion_tokens_count[model] = model_completion_tokens_count.get(model, 0) + 1
 
     present_modes = {(str(row.get("mode") or "").strip()) for row in rows if str(row.get("mode") or "").strip()}
-    pool_modes = [
-        mode
-        for mode in mode_order
-        if mode in {"ru_pool", "ru_pool_explained", "en_pool", "en_pool_explained"} and mode in present_modes
-    ]
+    header_modes = [mode for mode in mode_order if mode in present_modes]
 
     def model_header(model: str) -> str:
         total = model_latency_totals.get(model)
         total_part = _format_seconds(total)
         timing_parts: list[str] = []
-        for mode in pool_modes:
+        for mode in header_modes:
             samples = model_mode_latencies.get((model, mode), [])
             avg_mode = (sum(samples) / len(samples)) if samples else None
             timing_parts.append(_format_seconds(avg_mode))
         timing = f"<span class='total'>{html.escape(total_part)}</span>"
         if timing_parts:
             timing += " / " + " / ".join(html.escape(item) for item in timing_parts)
+        avg_in = None
+        avg_out = None
+        if model_prompt_tokens_count.get(model):
+            avg_in = model_prompt_tokens_sum.get(model, 0) / model_prompt_tokens_count.get(model, 1)
+        if model_completion_tokens_count.get(model):
+            avg_out = model_completion_tokens_sum.get(model, 0) / model_completion_tokens_count.get(model, 1)
+        tokens_line = ""
+        if avg_in is not None or avg_out is not None:
+            in_txt = f"{avg_in:.0f}" if avg_in is not None else "-"
+            out_txt = f"{avg_out:.0f}" if avg_out is not None else "-"
+            tokens_line = f"<div class='model-tokens'>avg in/out: {html.escape(in_txt)} / {html.escape(out_txt)} tok</div>"
         return (
             "<th class='model-col'>"
             f"<div class='model-name'>{html.escape(model)}</div>"
             f"<div class='model-time'>{timing}</div>"
+            f"{tokens_line}"
             "</th>"
         )
 
@@ -465,10 +485,10 @@ def build_report(run_dir: Path) -> Path:
         f"<div class='note'>Duplicate request rows: {duplicates}</div>" if duplicates else ""
     )
 
-    pool_timing_labels = " / ".join(MODE_LABELS.get(mode, mode) for mode in pool_modes)
+    mode_timing_labels = " / ".join(MODE_LABELS.get(mode, mode) for mode in header_modes)
     model_timing_note = (
-        f"Model headers: total latency / average latency for {pool_timing_labels}."
-        if pool_timing_labels
+        f"Model headers: total latency / average latency for {mode_timing_labels}."
+        if mode_timing_labels
         else "Model headers: total latency."
     )
 
@@ -495,6 +515,7 @@ def build_report(run_dir: Path) -> Path:
     .model-name {{ font-weight: 700; }}
     .model-time {{ margin-top: 3px; font-size: 11px; color: #64748b; font-weight: 500; }}
     .model-time .total {{ font-weight: 800; color: #0f172a; }}
+    .model-tokens {{ margin-top: 2px; font-size: 11px; color: #334155; font-weight: 600; }}
     .thumb {{ width: 100%; max-height: 240px; height: auto; object-fit: contain; display: block; border: 1px solid #d1d5db; background: #fff; margin-bottom: 6px; }}
     .thumb.missing {{ width: 100%; aspect-ratio: 3 / 2; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; }}
     .small {{ color: #64748b; font-size: 11px; word-break: break-word; }}
@@ -542,6 +563,7 @@ def build_report(run_dir: Path) -> Path:
     <span>{_render_chip('request error', 'error')}</span>
     <span>{_render_chip('thought anyway', 'error')}</span>
     <span>{html.escape(model_timing_note)}</span>
+    <span>Model headers also show average prompt/completion tokens (avg in/out).</span>
     <span>Empty cells mean no rendered tags for that request.</span>
   </div>
   <div class='table-wrap'>
