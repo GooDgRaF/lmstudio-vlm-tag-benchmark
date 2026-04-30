@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from src.user_config import UserConfigError, detect_config_style, expand_user_config
 
 
 class ConfigError(RuntimeError):
@@ -209,6 +210,13 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
 
     if not isinstance(loaded, dict):
         raise ConfigError("Config root must be a YAML mapping")
+
+    try:
+        style = detect_config_style(loaded)
+        if style == "simple":
+            loaded = expand_user_config(loaded, root_dir=cfg_path.resolve().parent)
+    except UserConfigError as exc:
+        raise ConfigError(str(exc)) from exc
 
     lmstudio_raw = _required_dict(loaded, "lmstudio")
     models_raw = _required_list(loaded, "models")

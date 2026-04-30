@@ -11,8 +11,6 @@ from typing import Any
 
 import yaml
 
-from src.lmstudio_client import LMStudioClient
-
 DEFAULT_LMSTUDIO_HOST = "http://localhost:1234"
 DEFAULT_API_BASE_URL = "http://localhost:1234/api/v1"
 DEFAULT_OPENAI_BASE_URL = "http://localhost:1234/v1"
@@ -284,6 +282,8 @@ def _model_registry_to_dict(registry: ModelRegistry) -> dict[str, Any]:
 
 
 def refresh_registry(output_path: Path = DEFAULT_REGISTRY_PATH) -> ModelRegistry:
+    from src.lmstudio_client import LMStudioClient
+
     client = LMStudioClient(
         api_base_url=DEFAULT_API_BASE_URL,
         openai_base_url=DEFAULT_OPENAI_BASE_URL,
