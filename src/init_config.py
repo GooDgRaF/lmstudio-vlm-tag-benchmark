@@ -41,6 +41,8 @@ def render_user_config(registry: ModelRegistry, images_folder: str = "ImgToTag")
         "# dry-run does not call model inference.",
         "# run performs real LM Studio requests and generates report artifacts.",
         "",
+        "# Input image folder (relative or absolute path).",
+        "# Example custom path: images_folder: \"D:/datasets/my_cards\"",
         f"images_folder: \"{images_folder}\"",
         "",
         "# 1 = quick smoke test",

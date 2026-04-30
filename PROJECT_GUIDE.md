@@ -1,36 +1,14 @@
-﻿# Project Guide
+# Project Guide
 
-Этот документ — рабочая карта репозитория Local VLM Image Tagger Benchmark: где что лежит, какие команды использовать и куда смотреть при типичных задачах.
+This document is the operational map of the repository:
+- where things are;
+- which command to run for each task;
+- where to inspect outputs and diagnostics.
 
-## Основной usercase
+`ARCHITECTURE.md` is the technical contract.
+This guide is workflow-first.
 
-Главный вертикальный слайс проекта:
-
-```text
-изображение в ImgToTag/
-  -> конфиг
-  -> LM Studio model load
-  -> REST smoke image request
-  -> шесть режимов тегирования
-  -> LM Studio REST Chat (/api/v1/chat)
-  -> raw JSON
-  -> normalized JSON
-  -> summary.csv
-  -> report.html
-  -> model unload
-```
-
-Для быстрой проверки используйте:
-
-```bash
-python main.py run --config configs/config.smoke.yaml
-```
-
-`configs/config.smoke.yaml` содержит одну модель и `limit_images: 1`, поэтому он подходит для ежедневной проверки пайплайна.
-
-## Human-friendly config workflow
-
-Основной пользовательский путь:
+## Quick Path (Daily Workflow)
 
 ```bash
 python main.py init-config
@@ -38,192 +16,99 @@ python main.py dry-run --config config.yaml
 python main.py run --config config.yaml
 ```
 
-Ключевые файлы:
+What this does:
+1. `init-config` refreshes model registry from LM Studio and generates user-editable `config.yaml`.
+2. `dry-run` validates and prints planned request counts (no model inference).
+3. `run` performs real LM Studio requests and writes artifacts to `results/<run_id>/`.
+
+## Config Model
+
+The project uses two config layers:
+
+1. `config.yaml` (simple user profile):
+- edited directly by user;
+- model labels and modes are selected by comment/uncomment list items.
+
+2. Resolved internal full config:
+- produced automatically from user profile;
+- consumed by `BenchmarkConfig` and the runner.
+
+### Key files
 
 ```text
-config.yaml                  user-edited simple config
-models.registry.yaml         generated model label registry
-models/lmstudio-models.raw.json
-models/models.active.yaml
-models/models.excluded.yaml
-configs/config.example.yaml          full internal/advanced example
-configs/config.smoke.yaml            legacy smoke/full-shape config
+config.yaml                      user-edited simple config
+models.registry.yaml             generated model label registry
+models/lmstudio-models.raw.json  raw LM Studio model inventory
+models/models.active.yaml        generated active VLM candidates
+models/models.excluded.yaml      generated excluded candidates with reasons
+configs/config.example.yaml      advanced full-shape example
+configs/config.smoke.yaml        advanced smoke full-shape profile
 ```
 
-Simple config автоматически расширяется во внутренний full config (`BenchmarkConfig`) перед валидацией и запуском runner.
+## CLI Commands
 
-Для полного прогона используйте:
+### Initialization and model inventory
 
 ```bash
-python main.py run --config configs/config.example.yaml
-```
-
-Полный прогон может быть долгим: он использует все модели из `configs/config.example.yaml` и все изображения из `ImgToTag/`.
-
-## Навигация по корню
-
-```text
-README.md             короткий вход и основные команды
-PROJECT_GUIDE.md      подробная карта проекта
-AGENTS.md             инструкция для coding agents
-ARCHITECTURE.md       архитектурный контракт и форматы v1
-main.py               CLI entrypoint
-configs/config.smoke.yaml     быстрый smoke-конфиг
-configs/config.example.yaml   полный пример конфигурации
-requirements.txt      Python-зависимости
-ImgToTag/             входные изображения пользователя
-models/               списки моделей LM Studio
-pools/                нормализованные tag pools
-results/              артефакты запусков
-specs/                спецификации этапов реализации
-src/                  код приложения
-tests/                pytest-тесты
-```
-
-## CLI
-
-Точка входа — `main.py`.
-
-Команды:
-
-```bash
-python main.py validate-config --config configs/config.smoke.yaml
-python main.py dry-run --config configs/config.smoke.yaml
 python main.py init-config
 python main.py refresh-models
 python main.py list-models
-python main.py run --config configs/config.smoke.yaml
-python main.py run --config configs/config.smoke.yaml --run-id smoke-001
-python main.py run --config configs/config.smoke.yaml --run-id smoke-001 --force-lock
-python main.py collect --run results/<run_id>
+```
+
+When to use:
+- `init-config`: first setup or regenerate `config.yaml` + registry.
+- `refresh-models`: refresh only model inventory/registry.
+- `list-models`: print registry labels available for `config.yaml`.
+
+### Validation and execution
+
+```bash
+python main.py validate-config --config config.yaml
+python main.py dry-run --config config.yaml
+python main.py run --config config.yaml
+python main.py run --config config.yaml --run-id my-run-001
+python main.py run --config config.yaml --run-id my-run-001 --force-lock
+```
+
+### Rebuild from artifacts
+
+```bash
+python main.py collect --run results/<run_id> --write-reports
 python main.py report --run results/<run_id>
 ```
 
-Когда использовать:
-
-- `validate-config` — после изменения YAML-конфигов, путей, моделей, режимов, pools.
-- `dry-run` — перед запуском benchmark, чтобы увидеть количество моделей, режимов и картинок.
-- `init-config` — генерирует `models.registry.yaml` и user-facing `config.yaml`.
-- `refresh-models` — обновляет модельный реестр без изменения `config.yaml`.
-- `list-models` — показывает доступные label из `models.registry.yaml`.
-- `run` — основной запуск benchmark; при `report.generate_html: true` создает HTML-отчет автоматически.
-- `run --run-id <id>` — продолжить/повторить конкретный run-каталог с манифестом запросов.
-- `run --force-lock` — снять stale `run.lock` после аварийного завершения.
-- `collect --run` — пересобрать `summary.csv` и `diagnostics.json` из request-артефактов.
-- `report` — пересобрать HTML для уже существующей папки `results/<run_id>`.
-
-## Конфиги
-
-### `configs/config.smoke.yaml`
-
-Основной быстрый тестовый конфиг:
-
-- одна модель: `qwen/qwen3-vl-4b@q4_k_m`;
-- все шесть режимов тегирования;
-- `limits.limit_images: 1`;
-- HTML-отчет включен;
-- resume включен;
-- unload модели после запуска включен.
-
-Используйте его для проверки изменений в коде и в вертикальном слайсе.
-
-### `configs/config.example.yaml`
-
-Полный пример benchmark-конфига:
-
-- 8 model variants;
-- все шесть режимов;
-- та же структура pools и diagnostics;
-- `limit_images: null`, если CLI не передает `--limit`.
-
-Используйте его для реального сравнения моделей. Для безопасной короткой проверки полного конфига добавляйте `--limit 1`.
-
-### `configs/config.rest-reasoning-smoke.yaml`
-
-Малый e2e-профиль для проверки REST reasoning-сценария:
-
-- 2 профиля одной модели (`reasoning: on/off`);
-- 1 изображение;
-- 2 режима;
-- артефакты и HTML-отчеты как в обычном run.
-
-## Входные изображения
-
-Папка входа:
+## Repository Map
 
 ```text
-ImgToTag/
+README.md             entry overview
+PROJECT_GUIDE.md      operational workflow guide (this file)
+ARCHITECTURE.md       technical architecture contract
+AGENTS.md             coding-agent rules
+main.py               CLI entrypoint
+configs/              advanced full-shape configs
+models/               generated model inventory snapshots
+pools/                tag pools
+results/              runtime artifacts
+specs/                implementation specs history
+src/                  application code
+tests/                pytest test suite
+user_manual.md        short user manual
 ```
 
-Поддерживаемые расширения задаются в конфиге:
+## Input Images
 
-```yaml
-input:
-  extensions:
-    - ".jpg"
-    - ".jpeg"
-    - ".png"
-    - ".webp"
-    - ".bmp"
-```
+Default user path is set in `config.yaml` via `images_folder`.
 
-Логика поиска находится в `src/image_loader.py`.
+Notes:
+- supported extensions: `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`;
+- `recursive` controls nested scanning;
+- `--limit` in CLI overrides config image limit for that run.
 
-Важно:
+Image discovery logic lives in `src/image_loader.py`.
 
-- `recursive: false` означает только файлы верхнего уровня;
-- сортировка стабильная, по относительному пути;
-- `image_id` строится из имени файла и короткого hash относительного пути;
-- CLI `--limit` имеет приоритет над `limits.limit_images`.
+## Modes and Pools
 
-## Модели
-
-Основные файлы:
-
-```text
-models.registry.yaml
-models/models.active.yaml
-models/models.excluded.yaml
-models/lmstudio-models.raw.json
-```
-
-`models.registry.yaml` — источник user-facing labels для `config.yaml`.  
-`models.active.yaml` содержит автоматически отобранные candidates.  
-`models.excluded.yaml` хранит исключённые модели с причинами.  
-`lmstudio-models.raw.json` — сырой экспорт из LM Studio.
-
-В runtime модель загружается через `src/lmstudio_client.py`, затем запросы отправляются в загруженный `instance_id` через REST Chat. Это удерживает benchmark на одном явно загруженном инстансе и снижает риск неявной второй загрузки в LM Studio.
-
-## Tag pools
-
-Runner использует четыре файла:
-
-```text
-pools/ru_plain.txt
-pools/en_plain.txt
-pools/ru_explained_ids.tsv
-pools/en_explained_ids.tsv
-```
-
-Plain-pool формат:
-
-```text
-one tag per line
-```
-
-Explained-pool формат:
-
-```text
-id<TAB>tag<TAB>explanation
-```
-
-Подробнее: [pools/README.md](pools/README.md).
-
-Код загрузки и валидации: `src/tag_pools.py`.
-
-## Режимы тегирования
-
-Список режимов задается в `modes` конфига:
+Supported modes:
 
 ```text
 ru_free
@@ -234,23 +119,23 @@ en_pool
 en_pool_explained
 ```
 
-Промпты строятся в `src/prompts.py`.
+Pool files:
 
-Ответы нормализуются в `src/validator.py`.
+```text
+pools/ru_plain.txt
+pools/en_plain.txt
+pools/ru_explained_ids.tsv
+pools/en_explained_ids.tsv
+```
 
-Правила:
+Rules:
+- free/plain pool modes use line tags by default;
+- explained modes use line IDs;
+- pool violations are quality signal and are recorded in outputs.
 
-- максимум тегов задается `limits.max_tags`;
-- free/plain modes по умолчанию используют `line_tags` (один тег на строку);
-- parser продолжает поддерживать `strict_json` для обратной совместимости и альтернативных конфигов;
-- explained modes ожидают ID тегов;
-- теги вне pool сохраняются в rejected-полях;
-- line-parser отбрасывает служебные строки рассуждения/пояснений, если модель вернула их внутри `final_content`;
-- `pool_validation_failed` в summary означает диагностированное нарушение pool-режима.
+## Results and Where to Look
 
-## Результаты
-
-Каждый запуск создает:
+Each run creates:
 
 ```text
 results/<run_id>/
@@ -261,129 +146,110 @@ results/<run_id>/
   run_complete.json
   summary.csv
   report.html
+  diagnostics.html
+  diagnostics.json
   errors.log
   requests/
   raw/
   normalized/
   assets/thumbs/
-  models/<model_label>/
 ```
 
-Что смотреть:
+Recommended inspection order:
+1. `report.html` (answer matrix)
+2. `diagnostics.html` (technical metrics)
+3. `summary.csv`
+4. `errors.log`
+5. `requests/<request_id>/...` for per-request truth
 
-- `report.html` — первая точка входа после запуска (answer matrix для сравнения моделей по image x mode);
-- `report.html` также показывает компактный timing-summary и корректно печатается через браузерный print preview;
-- `report.html` использует разные цвета для free-mode тегов, совпадений с pool, out-of-pool тегов и ошибок вроде `no_final_answer`;
-- `summary.csv` — таблица по всем запросам;
-- `normalized/<request_id>.json` — детальная диагностика конкретного запроса;
-- `normalized/<request_id>.json` хранит отдельно `final_content` и `reasoning_content`; теги парсятся только из `final_content`;
-- `requests/<request_id>/` — каноничные request-артефакты (`request/status/raw/normalized/diagnostics`);
-- `raw/<request_id>.json` — исходный ответ LM Studio;
-- `models/<model_label>/load.json` — фактический load config и `instance_id`;
-- `models/<model_label>/smoke_test.json` — результат image smoke-test;
-- `errors.log` — cleanup, skip/resume, ошибки загрузки и выгрузки.
+`requests/<request_id>/...` is the canonical source.
+Other summaries/reports can be rebuilt.
 
-`results/*` игнорируются git-ом, кроме `results/.gitkeep`.
+## Advanced Profiles (Optional)
 
-Источник истины: `requests/<request_id>/*` + `models/*` + `run_manifest.json`.  
-`summary.csv`, `diagnostics.json`, `report.html`, `diagnostics.html` считаются производными и могут быть пересобраны.
+These are for internal/extended workflows, not default user entry:
+- `configs/config.smoke.yaml`
+- `configs/config.example.yaml`
+- `configs/config.rest-reasoning-smoke.yaml`
 
-Для повторных прогонов в тот же `run_id`:
+Useful commands:
 
-- `result_mode: deterministic` переиспользует успешные запросы;
-- `result_mode: overwrite` пересчитывает каноничные результаты;
-- `result_mode: accumulate` добавляет новую попытку в `requests/<request_id>/attempts/NNN/` и сохраняет историю.
+```bash
+python main.py validate-config --config configs/config.smoke.yaml
+python main.py dry-run --config configs/config.smoke.yaml
+python main.py run --config configs/config.smoke.yaml
+```
 
-## Код
+## Code Map
 
 ```text
-src/config.py           dataclass-конфиг и YAML loader
-src/validator.py        semantic config validation и response normalization
-src/lmstudio_client.py  LM Studio API client
-src/runner.py           основной sequential benchmark loop
-src/storage.py          структура results и CSV writer
-src/report.py           статический HTML report
-src/prompts.py          prompt builder и response_format schema
-src/tag_pools.py        plain/explained pool loaders
-src/image_loader.py     обнаружение изображений
-src/diagnostics.py      GPU/context diagnostics
+src/config.py           config loading + style detection
+src/user_config.py      simple profile expansion to full runtime config
+src/model_registry.py   model inventory refresh + registry generation/resolution
+src/lmstudio_client.py  LM Studio API wrapper
+src/runner.py           sequential benchmark execution
+src/storage.py          run artifact layout + CSV writing
+src/prompts.py          prompt construction and format selection
+src/validator.py        response parsing + normalization + semantic checks
+src/report.py           static HTML reports
+src/collect.py          recomposition from request artifacts
+src/diagnostics.py      runtime diagnostics helpers
+src/tag_pools.py        pool loading and ID mapping
+src/image_loader.py     image discovery and IDs
 ```
 
-## Тесты
+## Test Strategy
 
-Запуск:
+Run all:
 
 ```bash
 python -m pytest -q
 ```
 
-Основные тестовые зоны:
-
-- `tests/test_config.py`, `tests/test_validator.py` — конфиг и валидация;
-- `tests/test_lmstudio_client.py` — HTTP-клиент LM Studio через monkeypatch;
-- `tests/test_runner.py` — вертикальный слайс runner-а;
-- `tests/test_report.py` — HTML report;
-- `tests/test_response_parsing.py` — JSON/line/ID parsing;
-- `tests/test_tag_pools.py` — загрузка pools.
-
-## Как расширять
-
-## HTML outputs
-
-- `report.html` is the answer matrix for manual model comparison.
-- `diagnostics.html` is a detailed runtime/service diagnostics page.
-- `python main.py report --run results/<run_id>` rebuilds both HTML reports when diagnostics data is present.
-
-### Добавить модель
-
-1. Обновите реестр:
+Focused suites:
 
 ```bash
-python main.py refresh-models
-```
-
-2. Перегенерируйте user config при необходимости:
-
-```bash
-python main.py init-config --force
-```
-
-3. Проверьте dry-run/run.
-
-```bash
-python main.py validate-config --config configs/config.example.yaml
-python main.py dry-run --config configs/config.example.yaml --limit 1
-```
-
-### Добавить тег в pool
-
-1. Измените один из файлов `pools/*.txt` или `pools/*_ids.tsv`.
-2. Сохраните формат файла.
-3. Запустите:
-
-```bash
-python main.py validate-config --config configs/config.smoke.yaml
-python -m pytest -q tests/test_tag_pools.py
-```
-
-### Изменить prompt или parser
-
-1. Меняйте `src/prompts.py` или `src/validator.py`.
-2. Проверьте `tests/test_prompts.py` и `tests/test_response_parsing.py`.
-3. Для изменения смысла промпта обновите `PROMPT_VERSION`.
-
-### Изменить HTML-отчет
-
-1. Меняйте `src/report.py`.
-2. Проверьте:
-
-```bash
+python -m pytest -q tests/test_model_registry.py
+python -m pytest -q tests/test_user_config.py
+python -m pytest -q tests/test_runner.py
 python -m pytest -q tests/test_report.py
-python main.py run --config configs/config.smoke.yaml
+python -m pytest -q tests/test_collect.py
 ```
 
-## Что держать простым
+## Change Playbooks
 
-v1 — локальный CLI benchmark. Для этой версии не нужны GUI, web-server, SQLite, async runner, judge-модель, plugin-system и backend-ы кроме LM Studio.
+### Change model inventory behavior
+Touch:
+- `src/model_registry.py`
+- `src/init_config.py`
+- `tests/test_model_registry.py`
+- `tests/test_init_config.py`
+- `tests/test_cli_config_workflow.py`
 
+### Change response parsing behavior
+Touch:
+- `src/validator.py`
+- `src/report.py` (if rendering changes)
+- `tests/test_response_parsing.py`
+- `tests/test_report.py`
 
+### Change report layout/metrics
+Touch:
+- `src/report.py`
+- `tests/test_report.py`
+
+### Change run artifact schema
+Touch:
+- `src/storage.py`
+- `src/runner.py`
+- `src/collect.py`
+- `tests/test_storage.py`
+- `tests/test_collect.py`
+
+## Keep It Simple
+
+For release stability:
+- keep CLI-first architecture;
+- keep `config.yaml` workflow primary;
+- avoid introducing heavyweight runtime dependencies;
+- preserve deterministic artifact contracts.

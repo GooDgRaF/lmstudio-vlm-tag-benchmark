@@ -71,8 +71,8 @@ def test_build_candidate_entries_filters_and_expands_variants_and_reasoning():
     assert "qwen3-vl-4b-q8_0" in labels
     assert "qwen3_5-9b-q4_k_m-think" in labels
     assert "qwen3_5-9b-q4_k_m-no-think" in labels
+    assert "gemma-27b-q4_k_m" in labels
     reasons = {item.get("reason") for item in excluded}
-    assert "params_over_10b" in reasons
     assert "not_vision" in reasons
 
 

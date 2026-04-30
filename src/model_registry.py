@@ -218,13 +218,7 @@ def _build_candidate_entries(raw_models: list[dict[str, Any]]) -> tuple[list[dic
                 excluded.append({"id": model_id, "reason": "not_vision"})
                 continue
 
-            params_text, params_b = _parse_params_billions(item, model_id)
-            if params_b is None:
-                excluded.append({"id": model_id, "reason": "unknown_params"})
-                continue
-            if params_b >= 10.0:
-                excluded.append({"id": model_id, "reason": "params_over_10b", "params": params_text})
-                continue
+            params_text, _ = _parse_params_billions(item, model_id)
 
             base_model_id = _extract_base_model_id(model_id)
             quant = _extract_quant_from_id(model_id) or str(item.get("quant") or "").strip() or None
