@@ -10,6 +10,61 @@ ImgToTag/ -> python main.py init-config -> python main.py run --config config.ya
 
 The runner loads selected models, sends image prompts through LM Studio REST Chat (`/api/v1/chat`), saves raw and normalized artifacts, writes `summary.csv`, and builds static HTML reports.
 
+## Installation
+
+### Required Software
+
+- Python 3.10 or newer. Python 3.11+ is recommended.
+- LM Studio with the local server enabled.
+- At least one vision-language model downloaded in LM Studio.
+- Git is optional. You only need it if you clone the repository instead of downloading a source archive.
+
+NVIDIA drivers and `nvidia-smi` are optional. When available, the benchmark records GPU memory diagnostics. When unavailable, the run continues without GPU diagnostics.
+
+### Get the Project
+
+With Git:
+
+```bash
+git clone https://github.com/GooDgRaF/lmstudio-vlm-tag-benchmark.git
+cd lmstudio-vlm-tag-benchmark
+```
+
+Or download the source archive, extract it, and open a terminal in the extracted project folder.
+
+### Install Python Dependencies
+
+Windows PowerShell:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+macOS/Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Check that the CLI starts:
+
+```bash
+python main.py --help
+```
+
+### Prepare LM Studio
+
+1. Install and open LM Studio.
+2. Download at least one vision-language model.
+3. Start the local server.
+4. Keep the default server address: `localhost:1234`.
+
 ## Quick Start
 
 1. Start the LM Studio server on `localhost:1234`.
