@@ -98,7 +98,7 @@ def build_config(base: Path) -> Path:
             "offload_kv_cache_to_gpu": True,
             "echo_load_config": True,
         },
-        "limits": {"max_tags": 10, "timeout_sec": 30, "retries": 1, "limit_images": None},
+        "limits": {"timeout_sec": 30, "retries": 1, "limit_images": None},
         "response_formats": {
             "free_modes": {"primary": "line_tags", "fallback": "strict_json"},
             "plain_pool_modes": {"primary": "line_tags", "fallback": "strict_json"},

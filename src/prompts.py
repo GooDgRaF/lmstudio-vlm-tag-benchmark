@@ -24,15 +24,6 @@ def mode_language(mode: str) -> str:
     return "ru" if mode.startswith("ru_") else "en"
 
 
-def _stage_chunks(max_tags: int) -> tuple[int, int, int]:
-    first = min(3, max_tags)
-    if max_tags <= first:
-        return first, 0, 0
-    second = min(3, max_tags - first)
-    third = max(max_tags - first - second, 0)
-    return first, second, third
-
-
 def _mode_prompt_path(cfg: BenchmarkConfig, mode: str) -> Path:
     by_mode = {
         "ru_free": cfg.prompt_files.ru_free,
@@ -46,15 +37,7 @@ def _mode_prompt_path(cfg: BenchmarkConfig, mode: str) -> Path:
 
 
 def _render_mode_header(cfg: BenchmarkConfig, mode: str) -> str:
-    first, second, third = _stage_chunks(cfg.limits.max_tags)
-    content = _mode_prompt_path(cfg, mode).read_text(encoding="utf-8")
-    values = {
-        "max_tags": str(cfg.limits.max_tags),
-        "first_chunk": str(first),
-        "second_chunk": str(second),
-        "third_chunk": str(third),
-    }
-    return content.format_map(values).strip()
+    return _mode_prompt_path(cfg, mode).read_text(encoding="utf-8").strip()
 
 
 def response_format_for_mode(cfg: BenchmarkConfig, mode: str) -> str:
@@ -87,24 +70,3 @@ def build_prompt(cfg: BenchmarkConfig, mode: str, pools: TagPools) -> PromptBuil
         prompt_version=PROMPT_VERSION,
         response_format_requested=response_format_for_mode(cfg, mode),
     )
-
-
-def strict_json_response_format(max_tags: int) -> dict:
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "image_tags",
-            "strict": True,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "tags": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "maxItems": max_tags,
-                    }
-                },
-                "required": ["tags"],
-            },
-        },
-    }

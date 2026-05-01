@@ -134,6 +134,10 @@ prompts/pools/ru_explained_ids.tsv
 prompts/pools/en_explained_ids.tsv
 ```
 
+Mode prompt files are plain text and are sent as LM Studio REST `system_prompt`. Pool/tag lists are sent as user input with the image.
+
+There is no prompt templating. To change wording or tag-count instructions, edit the prompt files directly.
+
 Pool violations are recorded as benchmark signal. They are not automatically code bugs.
 
 ## Results

@@ -98,6 +98,7 @@ def _run_smoke_test(
     try:
         completion = client.chat_rest(
             model_id=runtime_model_id,
+            system_prompt=system_prompt,
             input_items=input_items,
             temperature=0.0,
             top_p=1.0,
@@ -521,6 +522,7 @@ def run_benchmark(
                 try:
                     completion_payload = client.chat_rest(
                         model_id=loaded.instance_id,
+                        system_prompt=prompt.system_prompt,
                         input_items=build_rest_input_items(
                             prompt.system_prompt,
                             prompt.user_prompt,
@@ -652,7 +654,6 @@ def run_benchmark(
                     mode=mode,
                     requested_response_format=response_format_used,
                     pools=pools,
-                    max_tags=cfg.limits.max_tags,
                     allow_json_extraction=cfg.validation.allow_json_extraction,
                     allow_line_fallback=cfg.validation.allow_line_fallback,
                     drop_tags_not_in_pool=cfg.validation.drop_tags_not_in_pool,

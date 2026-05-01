@@ -84,8 +84,8 @@ def test_runner_passes_reasoning_and_rest_input_items(tmp_path, monkeypatch):
     run_benchmark(cfg, limit=1)
     call = fake.chat_rest_calls[0]
     assert call["reasoning"] == "off"
-    assert call["input_items"][0]["type"] == "text"
-    assert call["input_items"][1]["type"] == "image"
+    assert "Answer format: one tag per line" in call["system_prompt"]
+    assert call["input_items"][0]["type"] == "image"
 
 
 def test_reasoning_not_parsed_when_no_final_answer(tmp_path, monkeypatch):

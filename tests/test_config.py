@@ -13,7 +13,6 @@ def test_load_example_like_config(tmp_path):
     cfg = load_config(path)
     assert cfg.lmstudio.api_base_url.endswith("/api/v1")
     assert cfg.models[0].label == "m1_q4"
-    assert cfg.limits.max_tags == 10
     assert cfg.response_formats.free_modes.primary == "line_tags"
     assert cfg.response_formats.free_modes.fallback == "strict_json"
     assert cfg.response_formats.plain_pool_modes.primary == "line_tags"

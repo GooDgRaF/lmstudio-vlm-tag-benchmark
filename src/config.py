@@ -68,7 +68,6 @@ class LoadConfig:
 
 @dataclass(frozen=True)
 class LimitsConfig:
-    max_tags: int
     timeout_sec: int
     retries: int
     limit_images: int | None
@@ -325,7 +324,6 @@ def load_config(config_path: str | Path) -> BenchmarkConfig:
             echo_load_config=load_raw.get("echo_load_config"),
         ),
         limits=LimitsConfig(
-            max_tags=int(limits_raw.get("max_tags", 10)),
             timeout_sec=int(limits_raw.get("timeout_sec", 180)),
             retries=int(limits_raw.get("retries", 1)),
             limit_images=_coerce_int(limits_raw.get("limit_images")),

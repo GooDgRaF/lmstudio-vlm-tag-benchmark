@@ -190,7 +190,6 @@ def test_unload_all_loaded_models(tmp_path, monkeypatch):
 def test_build_rest_input_items_shape():
     out = build_rest_input_items("system prompt", "user prompt", "data:image/jpeg;base64,abc")
     assert out == [
-        {"type": "text", "content": "[SYSTEM]\nsystem prompt"},
         {"type": "text", "content": "user prompt"},
         {"type": "image", "data_url": "data:image/jpeg;base64,abc"},
     ]
@@ -210,6 +209,7 @@ def test_chat_rest_posts_expected_body(tmp_path, monkeypatch):
     monkeypatch.setattr(client.session, "request", fake_request)
     client.chat_rest(
         model_id="inst1",
+        system_prompt="sys",
         input_items=build_rest_input_items("sys", "usr", "data:image/jpeg;base64,x"),
         temperature=0.0,
         top_p=1.0,
@@ -220,9 +220,9 @@ def test_chat_rest_posts_expected_body(tmp_path, monkeypatch):
     assert seen["url"].endswith("/api/v1/chat")
     assert "messages" not in seen["json"]
     assert "response_format" not in seen["json"]
-    assert seen["json"]["input"][0] == {"type": "text", "content": "[SYSTEM]\nsys"}
-    assert seen["json"]["input"][1] == {"type": "text", "content": "usr"}
-    assert seen["json"]["input"][2]["type"] == "image"
+    assert seen["json"]["system_prompt"] == "sys"
+    assert seen["json"]["input"][0] == {"type": "text", "content": "usr"}
+    assert seen["json"]["input"][1]["type"] == "image"
     assert seen["json"]["max_output_tokens"] == 64
     assert seen["json"]["store"] is False
     assert seen["json"]["reasoning"] == "on"
@@ -241,6 +241,7 @@ def test_chat_rest_reasoning_default_omit_or_off(tmp_path, monkeypatch, reasonin
     monkeypatch.setattr(client.session, "request", fake_request)
     client.chat_rest(
         model_id="inst1",
+        system_prompt="sys",
         input_items=build_rest_input_items("sys", "usr", "data:image/jpeg;base64,x"),
         temperature=0.0,
         top_p=1.0,

@@ -108,7 +108,6 @@ def _reparse_normalized_from_raw(
         return normalized
 
     validation = run_config.get("validation") if isinstance(run_config.get("validation"), dict) else {}
-    limits = run_config.get("limits") if isinstance(run_config.get("limits"), dict) else {}
     reparsed = normalize_model_output(
         raw_output=raw_output,
         mode=str(normalized.get("mode") or raw.get("mode") or req.get("mode") or ""),
@@ -120,7 +119,6 @@ def _reparse_normalized_from_raw(
             or "line_tags"
         ),
         pools=pools,
-        max_tags=_to_int(limits.get("max_tags"), 10),
         allow_json_extraction=bool(validation.get("allow_json_extraction", True)),
         allow_line_fallback=bool(validation.get("allow_line_fallback", True)),
         drop_tags_not_in_pool=bool(validation.get("drop_tags_not_in_pool", True)),

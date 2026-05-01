@@ -208,7 +208,6 @@ load:
   echo_load_config: true
 
 limits:
-  max_tags: 10
   timeout_sec: 180
   retries: 1
   limit_images: null

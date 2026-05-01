@@ -107,6 +107,8 @@ Primary inference transport:
 POST /api/v1/chat
 ```
 
+The benchmark sends prompt headers through the request-level `system_prompt` field. The `input` array contains only user-side content: the optional pool/tag list and the image.
+
 Lifecycle calls:
 
 ```text
@@ -138,6 +140,8 @@ Current default response formats:
 - `line_ids` for explained pool modes.
 
 `strict_json` remains supported as a parser compatibility path.
+
+Mode prompt files are plain-text headers. They are not templated; braces remain literal text.
 
 ## Normalization Contract
 

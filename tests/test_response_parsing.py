@@ -12,7 +12,6 @@ def _normalize(tmp_path, **kwargs):
     pools = load_tag_pools(cfg)
     return normalize_model_output(
         pools=pools,
-        max_tags=cfg.limits.max_tags,
         allow_json_extraction=True,
         allow_line_fallback=True,
         drop_tags_not_in_pool=True,
@@ -221,7 +220,7 @@ def test_explained_mode_tag_text_rejected(tmp_path):
     assert out["rejected_ids"] == ["General", "Anime"]
 
 
-def test_tag_count_capped_at_10(tmp_path):
+def test_tag_count_is_not_capped_by_parser(tmp_path):
     tags = [f"t{i}" for i in range(20)]
     out = _normalize(
         tmp_path,
@@ -229,4 +228,4 @@ def test_tag_count_capped_at_10(tmp_path):
         mode="en_free",
         requested_response_format="strict_json",
     )
-    assert len(out["accepted_tags"]) == 10
+    assert len(out["accepted_tags"]) == 20

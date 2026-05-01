@@ -232,6 +232,7 @@ class LMStudioClient:
         self,
         *,
         model_id: str,
+        system_prompt: str = "",
         input_items: list[dict[str, Any]],
         temperature: float,
         top_p: float,
@@ -246,6 +247,8 @@ class LMStudioClient:
             "max_output_tokens": max_output_tokens,
             "store": False,
         }
+        if system_prompt.strip():
+            body["system_prompt"] = system_prompt.strip()
         if reasoning in {"on", "off"}:
             body["reasoning"] = reasoning
         return self._request("POST", f"{self.api_base_url}/chat", json=body)
@@ -253,10 +256,6 @@ class LMStudioClient:
 
 def build_rest_input_items(system_prompt: str, user_prompt: str, image_data_url: str) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    if system_prompt.strip():
-        # LM Studio REST /chat currently supports only text|image input items.
-        # We place system instructions as the first text item.
-        items.append({"type": "text", "content": f"[SYSTEM]\n{system_prompt.strip()}"})
     if user_prompt.strip():
         items.append({"type": "text", "content": user_prompt.strip()})
     items.append({"type": "image", "data_url": image_data_url})

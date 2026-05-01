@@ -2,12 +2,12 @@
 
 Answer format: one tag per line.
 At least 3 tags if the image has at least 3 obvious visible features.
-At most {max_tags} tags.
+At most 10 tags.
 
-First give the {first_chunk} most obvious tags.
-If those {first_chunk} tags are enough to capture the main content of the image, stop.
-If important visible objects are still missing, add up to {second_chunk} more tags.
-If important visible objects are still missing after that, add up to {third_chunk} more tags.
+First give the 3 most obvious tags.
+If those 3 tags are enough to capture the main content of the image, stop.
+If important visible objects are still missing, add up to 3 more tags.
+If important visible objects are still missing after that, add up to 4 more tags.
 Do not add tags just to reach a number.
 
 Rules:

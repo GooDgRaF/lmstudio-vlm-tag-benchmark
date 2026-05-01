@@ -157,6 +157,10 @@ Current prompts use line-based responses:
 
 `strict_json` parsing is still supported for alternative configs, but it is not the default path.
 
+Prompt files under `prompts/` are plain-text mode headers. During REST calls, the header is sent as LM Studio `system_prompt`, while the pool/tag list is sent as user input together with the image.
+
+There is no prompt templating. If you want different wording or limits, edit the prompt text directly.
+
 ## Reasoning Models
 
 LM Studio REST responses may separate final answer content from reasoning content. The benchmark parses tags only from final answer content.

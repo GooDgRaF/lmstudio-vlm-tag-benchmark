@@ -291,7 +291,7 @@ def _line_value_candidates(raw_line: str) -> list[str]:
     return [value]
 
 
-def _extract_bottom_valid_tags(raw_output: str, allowed: set[str], max_tags: int) -> list[str]:
+def _extract_bottom_valid_tags(raw_output: str, allowed: set[str]) -> list[str]:
     group: list[str] = []
     seen: set[str] = set()
     started = False
@@ -311,10 +311,10 @@ def _extract_bottom_valid_tags(raw_output: str, allowed: set[str], max_tags: int
             continue
         if started:
             break
-    return list(reversed(group))[:max_tags]
+    return list(reversed(group))
 
 
-def _extract_bottom_valid_ids(raw_output: str, valid_ids: set[str], max_tags: int) -> list[str]:
+def _extract_bottom_valid_ids(raw_output: str, valid_ids: set[str]) -> list[str]:
     group: list[str] = []
     seen: set[str] = set()
     started = False
@@ -333,7 +333,7 @@ def _extract_bottom_valid_ids(raw_output: str, valid_ids: set[str], max_tags: in
             continue
         if started:
             break
-    return list(reversed(group))[:max_tags]
+    return list(reversed(group))
 
 
 def _split_inline_tag_list(value: str) -> list[str]:
@@ -513,7 +513,6 @@ def normalize_model_output(
     mode: str,
     requested_response_format: str,
     pools: TagPools,
-    max_tags: int,
     allow_json_extraction: bool,
     allow_line_fallback: bool,
     drop_tags_not_in_pool: bool,
@@ -547,13 +546,13 @@ def normalize_model_output(
             tag_set = pools.ru_explained_tag_set if language == "ru" else pools.en_explained_tag_set
             id_pattern = r"^RU\d+$" if language == "ru" else r"^EN\d+$"
             if reasoning_leak_detected:
-                bottom_ids = _extract_bottom_valid_ids(raw_output, set(id_to_tag.keys()), max_tags)
+                bottom_ids = _extract_bottom_valid_ids(raw_output, set(id_to_tag.keys()))
                 if bottom_ids:
                     raw_ids = bottom_ids
                     raw_tags = []
                     reasoning_leak_recovered = True
 
-            for value in raw_ids[:max_tags]:
+            for value in raw_ids:
                 if re.match(id_pattern, value) and value in id_to_tag:
                     accepted_ids.append(value)
                     accepted_tags.append(id_to_tag[value])
@@ -570,18 +569,18 @@ def normalize_model_output(
         elif mode.endswith("_pool"):
             allowed = pools.ru_plain_set if language == "ru" else pools.en_plain_set
             if reasoning_leak_detected:
-                bottom_tags = _extract_bottom_valid_tags(raw_output, allowed, max_tags)
+                bottom_tags = _extract_bottom_valid_tags(raw_output, allowed)
                 if bottom_tags:
                     raw_tags = bottom_tags
                     reasoning_leak_recovered = True
-            for tag in raw_tags[:max_tags]:
+            for tag in raw_tags:
                 if tag in allowed:
                     accepted_tags.append(tag)
                 else:
                     rejected_tags.append(tag)
             pool_ok = len(rejected_tags) == 0
         else:
-            accepted_tags = raw_tags[:max_tags]
+            accepted_tags = raw_tags
             pool_ok = True
     else:
         pool_ok = False if is_pool_mode else True
@@ -590,11 +589,6 @@ def normalize_model_output(
         accepted_tags.extend(rejected_tags)
         rejected_tags = []
         pool_ok = True
-
-    if len(accepted_tags) > max_tags:
-        accepted_tags = accepted_tags[:max_tags]
-    if len(accepted_ids) > max_tags:
-        accepted_ids = accepted_ids[:max_tags]
 
     error_type = parsed.error_type
     error = parsed.error

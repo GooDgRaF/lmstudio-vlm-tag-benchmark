@@ -40,6 +40,18 @@ def test_free_prompt_contains_min3_and_staged_prioritization(tmp_path):
     assert "add up to 4 more tags" in prompt.prompt
 
 
+def test_prompt_header_is_plain_text_without_templating(tmp_path):
+    cfg = load_config(build_config(tmp_path))
+    (tmp_path / "prompts" / "en_free.txt").write_text(
+        "Keep this literal: {user_note}.\nJSON example: {\"tags\": []}\n",
+        encoding="utf-8",
+    )
+    pools = load_tag_pools(cfg)
+    prompt = build_prompt(cfg, "en_free", pools)
+    assert "{user_note}" in prompt.system_prompt
+    assert '{"tags": []}' in prompt.system_prompt
+
+
 def test_plain_pool_prompt_contains_pool_restriction_and_preserve_spelling(tmp_path):
     cfg = load_config(build_config(tmp_path))
     pools = load_tag_pools(cfg)

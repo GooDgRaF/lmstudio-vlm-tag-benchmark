@@ -231,8 +231,6 @@ def test_collect_reparses_raw_with_current_parser(tmp_path):
                 f"  en_plain: {pools / 'en_plain.txt'}",
                 f"  ru_explained: {pools / 'ru_explained_ids.tsv'}",
                 f"  en_explained: {pools / 'en_explained_ids.tsv'}",
-                "limits:",
-                "  max_tags: 10",
                 "validation:",
                 "  allow_json_extraction: true",
                 "  allow_line_fallback: true",

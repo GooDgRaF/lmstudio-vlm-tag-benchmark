@@ -247,7 +247,6 @@ def expand_user_config(profile: dict[str, Any], *, root_dir: Path, registry_path
             "echo_load_config": True,
         },
         "limits": {
-            "max_tags": 10,
             "timeout_sec": 180,
             "retries": 1,
             "limit_images": limit_images,
