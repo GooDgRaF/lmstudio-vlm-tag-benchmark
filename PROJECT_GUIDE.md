@@ -1,14 +1,10 @@
 # Project Guide
 
-This document is the operational map of the repository:
-- where things are;
-- which command to run for each task;
-- where to inspect outputs and diagnostics.
+Operational guide for running and maintaining the local VLM image tagging benchmark.
 
-`ARCHITECTURE.md` is the technical contract.
-This guide is workflow-first.
+For technical contracts, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Quick Path (Daily Workflow)
+## Daily Workflow
 
 ```bash
 python main.py init-config
@@ -16,51 +12,51 @@ python main.py dry-run --config config.yaml
 python main.py run --config config.yaml
 ```
 
-What this does:
-1. `init-config` refreshes model registry from LM Studio and generates user-editable `config.yaml`.
-2. `dry-run` validates and prints planned request counts (no model inference).
-3. `run` performs real LM Studio requests and writes artifacts to `results/<run_id>/`.
+What happens:
 
-## Config Model
+1. `init-config` refreshes LM Studio model inventory and writes `config.yaml`.
+2. `dry-run` validates config and input discovery without inference.
+3. `run` sends real requests to LM Studio and writes artifacts under `results/<run_id>/`.
 
-The project uses two config layers:
+## Configs
 
-1. `config.yaml` (simple user profile):
-- edited directly by user;
-- model labels and modes are selected by comment/uncomment list items.
-
-2. Resolved internal full config:
-- produced automatically from user profile;
-- consumed by `BenchmarkConfig` and the runner.
-
-### Key files
+Primary user config:
 
 ```text
-config.yaml                      user-edited simple config
-models.registry.yaml             generated model label registry
-models/lmstudio-models.raw.json  raw LM Studio model inventory
-models/models.active.yaml        generated active VLM candidates
-models/models.excluded.yaml      generated excluded candidates with reasons
-configs/config.example.yaml      advanced full-shape example
-configs/config.smoke.yaml        advanced smoke full-shape profile
+config.yaml
 ```
+
+Generated local model files:
+
+```text
+models.registry.yaml
+models/lmstudio-models.raw.json
+models/models.active.yaml
+models/models.excluded.yaml
+```
+
+Advanced full-shape configs:
+
+```text
+configs/config.smoke.yaml
+configs/config.example.yaml
+configs/config.rest-reasoning-smoke.yaml
+```
+
+Use `config.yaml` for normal runs. Use `configs/config.smoke.yaml` for quick development checks.
 
 ## CLI Commands
 
-### Initialization and model inventory
+Model inventory and setup:
 
 ```bash
 python main.py init-config
 python main.py refresh-models
 python main.py list-models
+python main.py list-models --verbose
 ```
 
-When to use:
-- `init-config`: first setup or regenerate `config.yaml` + registry.
-- `refresh-models`: refresh only model inventory/registry.
-- `list-models`: print registry labels available for `config.yaml`.
-
-### Validation and execution
+Validation and execution:
 
 ```bash
 python main.py validate-config --config config.yaml
@@ -70,7 +66,7 @@ python main.py run --config config.yaml --run-id my-run-001
 python main.py run --config config.yaml --run-id my-run-001 --force-lock
 ```
 
-### Rebuild from artifacts
+Rebuild derived outputs:
 
 ```bash
 python main.py collect --run results/<run_id> --write-reports
@@ -80,31 +76,35 @@ python main.py report --run results/<run_id>
 ## Repository Map
 
 ```text
-README.md             entry overview
-PROJECT_GUIDE.md      operational workflow guide (this file)
+README.md             project overview
+PROJECT_GUIDE.md      operational guide
 ARCHITECTURE.md       technical architecture contract
 AGENTS.md             coding-agent rules
 main.py               CLI entrypoint
-configs/              advanced full-shape configs
-models/               generated model inventory snapshots
-pools/                tag pools
-results/              runtime artifacts
-specs/                implementation specs history
 src/                  application code
-tests/                pytest test suite
+tests/                pytest suite
+configs/              advanced full-shape configs
+prompts/              prompt headers and tag pools
+models/               generated model inventory snapshots
+results/              generated benchmark artifacts
 user_manual.md        short user manual
 ```
 
+`models/` and `results/` are runtime folders. Only their `.gitkeep` files are tracked.
+
 ## Input Images
 
-Default user path is set in `config.yaml` via `images_folder`.
+The input folder is configured by `images_folder` in `config.yaml`.
 
-Notes:
-- supported extensions: `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`;
-- `recursive` controls nested scanning;
-- `--limit` in CLI overrides config image limit for that run.
+Supported extensions:
 
-Image discovery logic lives in `src/image_loader.py`.
+```text
+.jpg, .jpeg, .png, .webp, .bmp
+```
+
+`recursive` controls nested scanning. CLI `--limit` overrides the config image limit for one run.
+
+Image discovery is implemented in `src/image_loader.py`.
 
 ## Modes and Pools
 
@@ -119,21 +119,24 @@ en_pool
 en_pool_explained
 ```
 
-Pool files:
+Default prompt and pool files live under `prompts/`:
 
 ```text
-pools/ru_plain.txt
-pools/en_plain.txt
-pools/ru_explained_ids.tsv
-pools/en_explained_ids.tsv
+prompts/ru_free.txt
+prompts/ru_pool.txt
+prompts/ru_pool_explained.txt
+prompts/en_free.txt
+prompts/en_pool.txt
+prompts/en_pool_explained.txt
+prompts/pools/ru_plain.txt
+prompts/pools/en_plain.txt
+prompts/pools/ru_explained_ids.tsv
+prompts/pools/en_explained_ids.tsv
 ```
 
-Rules:
-- free/plain pool modes use line tags by default;
-- explained modes use line IDs;
-- pool violations are quality signal and are recorded in outputs.
+Pool violations are recorded as benchmark signal. They are not automatically code bugs.
 
-## Results and Where to Look
+## Results
 
 Each run creates:
 
@@ -156,41 +159,26 @@ results/<run_id>/
 ```
 
 Recommended inspection order:
-1. `report.html` (answer matrix)
-2. `diagnostics.html` (technical metrics)
-3. `summary.csv`
-4. `errors.log`
-5. `requests/<request_id>/...` for per-request truth
 
-`requests/<request_id>/...` is the canonical source.
-Other summaries/reports can be rebuilt.
+1. `report.html`: answer matrix.
+2. `diagnostics.html`: technical metrics and request diagnostics.
+3. `summary.csv`: spreadsheet-friendly table.
+4. `errors.log`: runner events and failures.
+5. `requests/<request_id>/...`: canonical per-request artifacts.
 
-## Advanced Profiles (Optional)
-
-These are for internal/extended workflows, not default user entry:
-- `configs/config.smoke.yaml`
-- `configs/config.example.yaml`
-- `configs/config.rest-reasoning-smoke.yaml`
-
-Useful commands:
-
-```bash
-python main.py validate-config --config configs/config.smoke.yaml
-python main.py dry-run --config configs/config.smoke.yaml
-python main.py run --config configs/config.smoke.yaml
-```
+`summary.csv`, `diagnostics.json`, `report.html`, and `diagnostics.html` are derived files and can be rebuilt with `collect`.
 
 ## Code Map
 
 ```text
-src/config.py           config loading + style detection
-src/user_config.py      simple profile expansion to full runtime config
-src/model_registry.py   model inventory refresh + registry generation/resolution
+src/config.py           config loading and style detection
+src/user_config.py      simple profile expansion
+src/model_registry.py   model inventory and registry generation
 src/lmstudio_client.py  LM Studio API wrapper
 src/runner.py           sequential benchmark execution
-src/storage.py          run artifact layout + CSV writing
-src/prompts.py          prompt construction and format selection
-src/validator.py        response parsing + normalization + semantic checks
+src/storage.py          run artifact layout and summary CSV
+src/prompts.py          prompt construction
+src/validator.py        response parsing and normalization
 src/report.py           static HTML reports
 src/collect.py          recomposition from request artifacts
 src/diagnostics.py      runtime diagnostics helpers
@@ -198,15 +186,15 @@ src/tag_pools.py        pool loading and ID mapping
 src/image_loader.py     image discovery and IDs
 ```
 
-## Test Strategy
+## Tests
 
-Run all:
+Run all tests:
 
 ```bash
 python -m pytest -q
 ```
 
-Focused suites:
+Useful focused checks:
 
 ```bash
 python -m pytest -q tests/test_model_registry.py
@@ -216,40 +204,24 @@ python -m pytest -q tests/test_report.py
 python -m pytest -q tests/test_collect.py
 ```
 
-## Change Playbooks
+## Release Check
 
-### Change model inventory behavior
-Touch:
-- `src/model_registry.py`
-- `src/init_config.py`
-- `tests/test_model_registry.py`
-- `tests/test_init_config.py`
-- `tests/test_cli_config_workflow.py`
+Before publishing:
 
-### Change response parsing behavior
-Touch:
-- `src/validator.py`
-- `src/report.py` (if rendering changes)
-- `tests/test_response_parsing.py`
-- `tests/test_report.py`
+```bash
+git status --short --branch
+python main.py validate-config --config configs/config.smoke.yaml
+python main.py dry-run --config configs/config.smoke.yaml
+python main.py validate-config --config configs/config.example.yaml
+python main.py dry-run --config configs/config.example.yaml --limit 1
+python -m pytest -q
+```
 
-### Change report layout/metrics
-Touch:
-- `src/report.py`
-- `tests/test_report.py`
+Run a real LM Studio smoke benchmark only when runtime behavior needs verification.
 
-### Change run artifact schema
-Touch:
-- `src/storage.py`
-- `src/runner.py`
-- `src/collect.py`
-- `tests/test_storage.py`
-- `tests/test_collect.py`
+## Maintenance Rules
 
-## Keep It Simple
-
-For release stability:
-- keep CLI-first architecture;
-- keep `config.yaml` workflow primary;
-- avoid introducing heavyweight runtime dependencies;
-- preserve deterministic artifact contracts.
+- Keep `config.yaml` as the primary user workflow.
+- Keep LM Studio REST Chat as the primary inference transport.
+- Keep runtime artifacts deterministic and rebuildable.
+- Avoid heavyweight runtime dependencies unless the project scope changes.

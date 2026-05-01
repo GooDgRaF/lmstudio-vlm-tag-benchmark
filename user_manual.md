@@ -1,41 +1,44 @@
-# User Manual (Short)
+# User Manual
 
-## 1. What this project does
+## What It Does
 
-Runs local VLM models via LM Studio on images and saves:
-- raw responses;
-- normalized responses;
+Runs local VLM models through LM Studio, asks them to tag images, and writes:
+
+- raw model responses;
+- normalized parsed responses;
 - `summary.csv`;
-- HTML reports (`report.html`, `diagnostics.html`).
+- `report.html`;
+- `diagnostics.html`.
 
-## 2. Quick start
+## Quick Start
 
-1. Start LM Studio server on `localhost:1234`.
-2. Put images into your input folder (default: `ImgToTag`).
-3. Generate user config:
+1. Start the LM Studio server on `localhost:1234`.
+2. Put images into `ImgToTag/`.
+3. Generate the user config:
 
 ```bash
 python main.py init-config
 ```
 
 4. Edit `config.yaml`:
-- keep only needed model labels in `models`;
-- keep only needed modes in `modes`;
-- optionally change `images_folder` / `limit_images`.
 
-5. Check plan (no inference):
+- keep the model labels you want under `models`;
+- keep the modes you want under `modes`;
+- optionally change `images_folder` or `limit_images`.
+
+5. Check the plan without inference:
 
 ```bash
 python main.py dry-run --config config.yaml
 ```
 
-6. Run benchmark:
+6. Run:
 
 ```bash
 python main.py run --config config.yaml
 ```
 
-## 3. Core commands
+## Useful Commands
 
 ```bash
 python main.py init-config
@@ -48,14 +51,19 @@ python main.py report --run results/<run_id>
 python main.py collect --run results/<run_id> --write-reports
 ```
 
-## 4. Where to look after run
+## Outputs
 
-- `results/<run_id>/report.html` — main answer matrix
-- `results/<run_id>/diagnostics.html` — technical diagnostics
-- `results/<run_id>/summary.csv` — tabular summary
+Open these after a run:
 
-## 5. Notes
+- `results/<run_id>/report.html`: main answer matrix;
+- `results/<run_id>/diagnostics.html`: technical diagnostics;
+- `results/<run_id>/summary.csv`: table for analysis.
+
+`collect --write-reports` rebuilds summary and reports from request artifacts.
+
+## Notes
 
 - `dry-run` validates and prints request counts only.
-- `run` sends real requests to LM Studio and writes artifacts.
-- `pool_validation_failed` is a quality signal, not always a code bug.
+- `run` sends real requests to LM Studio.
+- `pool_validation_failed` means the model returned values outside the configured pool.
+- Some reasoning-capable models may write reasoning into the final answer; the report marks this as `thought anyway` when detected.

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -42,8 +42,8 @@ def test_init_config_writes_yaml_and_embeds_models_and_modes(tmp_path, monkeypat
     assert loaded["models"] == ["qwen3-vl-4b-q4_k_m"]
     assert loaded["modes"] == ["ru_free"]
     assert '# tag_files:' in text
-    assert '#   ru_plus: "promts/pools/ru_explained_ids.tsv"' in text
-    assert '#   ru_pool: "promts/ru_pool.txt"' in text
+    assert '#   ru_plus: "prompts/pools/ru_explained_ids.tsv"' in text
+    assert '#   ru_pool: "prompts/ru_pool.txt"' in text
     assert '# - "qwen3-vl-8b-q4_k_m"' in text
     assert '# - "en_pool"' in text
 
@@ -75,3 +75,4 @@ def test_init_config_no_models_fallback(tmp_path, monkeypatch):
     assert rc == 0
     text = out.read_text(encoding="utf-8")
     assert "No LM Studio models were found" in text
+

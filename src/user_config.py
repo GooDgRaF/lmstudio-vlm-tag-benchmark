@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -123,10 +123,10 @@ def _optional_bool(data: dict[str, Any], key: str, default: bool) -> bool:
 
 def _resolve_tag_files(profile: dict[str, Any]) -> dict[str, str]:
     defaults = {
-        "ru": "promts/pools/ru_plain.txt",
-        "ru_plus": "promts/pools/ru_explained_ids.tsv",
-        "en": "promts/pools/en_plain.txt",
-        "en_plus": "promts/pools/en_explained_ids.tsv",
+        "ru": "prompts/pools/ru_plain.txt",
+        "ru_plus": "prompts/pools/ru_explained_ids.tsv",
+        "en": "prompts/pools/en_plain.txt",
+        "en_plus": "prompts/pools/en_explained_ids.tsv",
     }
     raw = profile.get("tag_files")
     if raw is None:
@@ -150,12 +150,12 @@ def _resolve_tag_files(profile: dict[str, Any]) -> dict[str, str]:
 
 def _resolve_mode_prompt_files(profile: dict[str, Any]) -> dict[str, str]:
     defaults = {
-        "ru_free": "promts/ru_free.txt",
-        "ru_pool": "promts/ru_pool.txt",
-        "ru_pool_explained": "promts/ru_pool_explained.txt",
-        "en_free": "promts/en_free.txt",
-        "en_pool": "promts/en_pool.txt",
-        "en_pool_explained": "promts/en_pool_explained.txt",
+        "ru_free": "prompts/ru_free.txt",
+        "ru_pool": "prompts/ru_pool.txt",
+        "ru_pool_explained": "prompts/ru_pool_explained.txt",
+        "en_free": "prompts/en_free.txt",
+        "en_pool": "prompts/en_pool.txt",
+        "en_pool_explained": "prompts/en_pool_explained.txt",
     }
     raw = profile.get("mode_prompt_files")
     if raw is None:
@@ -302,3 +302,4 @@ def load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise UserConfigError("Config root must be a YAML mapping")
     return payload
+

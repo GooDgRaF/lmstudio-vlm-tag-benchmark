@@ -42,18 +42,18 @@ modes:
   - en_pool
 
 pools:
-  ru_plain: "../promts/pools/ru_plain.txt"
-  en_plain: "../promts/pools/en_plain.txt"
-  ru_explained: "../promts/pools/ru_explained_ids.tsv"
-  en_explained: "../promts/pools/en_explained_ids.tsv"
+  ru_plain: "../prompts/pools/ru_plain.txt"
+  en_plain: "../prompts/pools/en_plain.txt"
+  ru_explained: "../prompts/pools/ru_explained_ids.tsv"
+  en_explained: "../prompts/pools/en_explained_ids.tsv"
 
 prompt_files:
-  ru_free: "../promts/ru_free.txt"
-  ru_pool: "../promts/ru_pool.txt"
-  ru_pool_explained: "../promts/ru_pool_explained.txt"
-  en_free: "../promts/en_free.txt"
-  en_pool: "../promts/en_pool.txt"
-  en_pool_explained: "../promts/en_pool_explained.txt"
+  ru_free: "../prompts/ru_free.txt"
+  ru_pool: "../prompts/ru_pool.txt"
+  ru_pool_explained: "../prompts/ru_pool_explained.txt"
+  en_free: "../prompts/en_free.txt"
+  en_pool: "../prompts/en_pool.txt"
+  en_pool_explained: "../prompts/en_pool_explained.txt"
 
 generation:
   temperature: 0.0
@@ -117,4 +117,5 @@ evaluation:
   track_json_stability: true
   track_pool_compliance: true
   track_hallucinated_tags: true
+
 

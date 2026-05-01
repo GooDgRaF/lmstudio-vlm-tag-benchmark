@@ -6,7 +6,7 @@ import yaml
 
 
 def write_minimal_pools(base: Path) -> None:
-    pools = base / "promts" / "pools"
+    pools = base / "prompts" / "pools"
     pools.mkdir(parents=True, exist_ok=True)
     (pools / "ru_plain.txt").write_text("кот\n#comment\nсобака\n", encoding="utf-8")
     (pools / "en_plain.txt").write_text("cat\ndog\n", encoding="utf-8")
@@ -32,8 +32,8 @@ def write_minimal_images(base: Path) -> None:
 
 
 def write_minimal_prompt_files(base: Path) -> None:
-    promts = base / "promts"
-    promts.mkdir(parents=True, exist_ok=True)
+    prompts = base / "prompts"
+    prompts.mkdir(parents=True, exist_ok=True)
     files = {
         "ru_free.txt": "Дай теги к изображению на русском языке.\nФормат ответа: один тег на строку.\nМинимум 3 тега.\n",
         "ru_pool.txt": "Дай теги к изображению на русском языке.\nВыбирай теги только из списка ниже.\nНе изменяй написание тегов.\n",
@@ -43,7 +43,7 @@ def write_minimal_prompt_files(base: Path) -> None:
         "en_pool_explained.txt": "Give image IDs in English.\nAnswer format: one ID per line.\n",
     }
     for name, content in files.items():
-        (promts / name).write_text(content, encoding="utf-8")
+        (prompts / name).write_text(content, encoding="utf-8")
 
 
 def build_config(base: Path) -> Path:
@@ -78,18 +78,18 @@ def build_config(base: Path) -> Path:
         "output": {"results_dir": str(results.resolve())},
         "modes": ["ru_free", "ru_pool", "ru_pool_explained", "en_free", "en_pool", "en_pool_explained"],
         "pools": {
-            "ru_plain": "promts/pools/ru_plain.txt",
-            "en_plain": "promts/pools/en_plain.txt",
-            "ru_explained": "promts/pools/ru_explained_ids.tsv",
-            "en_explained": "promts/pools/en_explained_ids.tsv",
+            "ru_plain": "prompts/pools/ru_plain.txt",
+            "en_plain": "prompts/pools/en_plain.txt",
+            "ru_explained": "prompts/pools/ru_explained_ids.tsv",
+            "en_explained": "prompts/pools/en_explained_ids.tsv",
         },
         "prompt_files": {
-            "ru_free": "promts/ru_free.txt",
-            "ru_pool": "promts/ru_pool.txt",
-            "ru_pool_explained": "promts/ru_pool_explained.txt",
-            "en_free": "promts/en_free.txt",
-            "en_pool": "promts/en_pool.txt",
-            "en_pool_explained": "promts/en_pool_explained.txt",
+            "ru_free": "prompts/ru_free.txt",
+            "ru_pool": "prompts/ru_pool.txt",
+            "ru_pool_explained": "prompts/ru_pool_explained.txt",
+            "en_free": "prompts/en_free.txt",
+            "en_pool": "prompts/en_pool.txt",
+            "en_pool_explained": "prompts/en_pool_explained.txt",
         },
         "generation": {"temperature": 0.0, "top_p": 1.0, "max_tokens": 64},
         "load": {
@@ -140,4 +140,5 @@ def build_config(base: Path) -> Path:
     path = base / "config.yaml"
     path.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
+
 

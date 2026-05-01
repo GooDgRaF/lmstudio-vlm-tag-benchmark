@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -82,19 +82,19 @@ def render_user_config(registry: ModelRegistry, images_folder: str = "ImgToTag")
             "# Optional tag pool files (relative or absolute paths).",
             "# ru/en = plain pools, ru_plus/en_plus = ID-based pools (pool+ modes).",
             "# tag_files:",
-            "#   ru: \"promts/pools/ru_plain.txt\"",
-            "#   ru_plus: \"promts/pools/ru_explained_ids.tsv\"",
-            "#   en: \"promts/pools/en_plain.txt\"",
-            "#   en_plus: \"promts/pools/en_explained_ids.tsv\"",
+            "#   ru: \"prompts/pools/ru_plain.txt\"",
+            "#   ru_plus: \"prompts/pools/ru_explained_ids.tsv\"",
+            "#   en: \"prompts/pools/en_plain.txt\"",
+            "#   en_plus: \"prompts/pools/en_explained_ids.tsv\"",
             "",
             "# Optional per-mode prompt header files (relative or absolute paths).",
             "# mode_prompt_files:",
-            "#   ru_free: \"promts/ru_free.txt\"",
-            "#   ru_pool: \"promts/ru_pool.txt\"",
-            "#   ru_pool_explained: \"promts/ru_pool_explained.txt\"",
-            "#   en_free: \"promts/en_free.txt\"",
-            "#   en_pool: \"promts/en_pool.txt\"",
-            "#   en_pool_explained: \"promts/en_pool_explained.txt\"",
+            "#   ru_free: \"prompts/ru_free.txt\"",
+            "#   ru_pool: \"prompts/ru_pool.txt\"",
+            "#   ru_pool_explained: \"prompts/ru_pool_explained.txt\"",
+            "#   en_free: \"prompts/en_free.txt\"",
+            "#   en_pool: \"prompts/en_pool.txt\"",
+            "#   en_pool_explained: \"prompts/en_pool_explained.txt\"",
             "",
             "output_folder: \"results\"",
             "",
@@ -116,3 +116,4 @@ def write_user_config(path: Path, content: str, *, force: bool) -> None:
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
